@@ -96,7 +96,7 @@ def make_audit(repo: Path) -> dict:
         "findings": [{"id": "F1", "key": "missing_cwd:AGENTS.md:npm-run-test-unit", "category": "missing_cwd",
                       "severity": "high", "dimension": "B", "file": "AGENTS.md", "line": 7,
                       "summary": "no directory", "evidence": "web/package.json:1", "fix": "From web, run npm test"},
-                     {"id": "F2", "key": "instruction_drift:CLAUDE.md:copies-agents-md", "category": "instruction_drift",
+                     {"id": "F2", "key": "instruction_drift:CLAUDE.md:agents-md", "category": "instruction_drift",
                       "severity": "medium", "dimension": "G", "file": "CLAUDE.md", "line": None,
                       "summary": "copies AGENTS.md", "evidence": "CLAUDE.md:3", "fix": "replace with @AGENTS.md"}],
         "dispositions": [
