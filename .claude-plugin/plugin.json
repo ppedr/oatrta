@@ -1,0 +1,15 @@
+{
+  "name": "oatrta",
+  "version": "0.1.0",
+  "description": "Audit, refactor and create AGENTS.md files following the AAIF guide 'Writing an effective AGENTS.md'.",
+  "author": {
+    "name": "ppedr"
+  },
+  "homepage": "https://github.com/ppedr/oatrta",
+  "repository": "https://github.com/ppedr/oatrta",
+  "keywords": [
+    "agents-md",
+    "context-engineering",
+    "audit"
+  ]
+}

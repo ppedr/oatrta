@@ -1,0 +1,14 @@
+{
+  "name": "oatrta",
+  "owner": {
+    "name": "ppedr"
+  },
+  "plugins": [
+    {
+      "name": "oatrta",
+      "source": "./",
+      "description": "Audit, refactor and create AGENTS.md files following the AAIF guide 'Writing an effective AGENTS.md'.",
+      "version": "0.1.0"
+    }
+  ]
+}
