@@ -30,8 +30,11 @@ A refactor is successful when the file is **shorter or equal in noise, higher in
 
 ### 1. Get the audit
 
-If an audit from `agents-md-audit` exists in the conversation, use its line dispositions,
-gaps and maintainer questions. Otherwise run the audit workflow now, including the scanner:
+If an audit from `agents-md-audit` exists, in the conversation or as an `audit.json` file,
+use its line dispositions, gaps and maintainer questions. An `audit.json` is only usable if the
+AGENTS.md files have not changed since it was written (compare its `files[].sha256`); if they
+changed, its line numbers are wrong, so re-audit. Otherwise run the audit workflow now,
+including the scanner:
 
 ```
 python <skill-dir>/scripts/scan_agents_md.py <repo-root> --format json

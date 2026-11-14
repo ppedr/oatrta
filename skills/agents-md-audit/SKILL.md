@@ -121,9 +121,31 @@ Use `references/report-template.md`. Rules:
 - Remind the user once that a score is a proxy: the real test is running the agents they use on
   representative tasks with and without the file.
 
-Default to a chat report. Write a file (for example `agents-md-audit.md`) only when asked.
+Default to a chat report. Write files only in file output mode (step 8).
 
-## Output contract for other skills
+### 8. File output mode
 
-When called by `agents-md-refactor` or `agents-md-create`, also keep the per-line disposition
-table and the list of maintainer questions available in full; those skills consume them.
+Use it when the user asks for a file, or when a caller (`agents-md-refactor`,
+`agents-md-remediate`) passes output paths. Write two files:
+
+- `audit.json`, following `references/audit-schema.json`.
+- `audit.md`, the report from step 7.
+
+Rules for the JSON:
+
+- Fill `files` from `python <skill-dir>/scripts/run_tools.py hashes <repo-root>`. The hashes let
+  consumers detect that AGENTS.md changed after the audit.
+- `git_head` from `git rev-parse HEAD`, or null outside git.
+- Every finding, blocker and gap gets a stable `key`: `<category>:<file>:<subject>`. The
+  subject is the command, path or heading involved, or a short kebab-case slug of the rule.
+  Never a line number. The same issue must produce the same key in a later audit, even after
+  lines moved; comparisons depend on it.
+- `dispositions` covers every instruction, KEEP included, with line ranges in the file as it is
+  now. Mark maintainer knowledge you kept without verifying as `"unverified": true`.
+- Never put a secret value in either file.
+
+Validate before finishing, and fix until it exits 0:
+
+```
+python <skill-dir>/scripts/run_tools.py validate audit.json
+```

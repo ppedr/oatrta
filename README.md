@@ -8,10 +8,27 @@ A skill pack for `AGENTS.md` files: audit, refactor and create them, following t
 | `agents-md-audit` | 0 to 100 score, blockers, line-by-line verdicts, gaps proven by the repo | No |
 | `agents-md-refactor` | Applies the audit: cuts noise, makes vague rules exact, fixes commands and paths, splits root and nested files | Yes, AGENTS.md only |
 | `agents-md-create` | Creates the root file and any nested files needed, from repo evidence and maintainer questions | Yes, new files only |
+| `agents-md-remediate` | Applies an audit and proves the result with three isolated subagents: fixer, independent re-auditor, comparator | Yes, AGENTS.md only |
 
-Flow: `audit` decides the next step. A low score with salvageable content goes to `refactor`.
-No file, or missing nested files, goes to `create`. Both `refactor` and `create` re-run the rubric
-at the end.
+Flow: `audit` decides the next step. A low score with salvageable content goes to `refactor`
+(interactive) or `remediate` (verified). No file, or missing nested files, goes to `create`.
+
+## Remediation run
+
+`agents-md-remediate` consumes an `audit.json` and runs three subagents one after another, each
+with a fresh context:
+
+1. **Fixer** applies the audit to AGENTS.md files and writes a report of every change.
+2. **Auditor** audits the result from scratch. It never sees the first audit or the fixer's
+   report, so the fix is not graded by the agent that made it.
+3. **Comparator** matches the two audits finding by finding, separates real regressions from
+   audit-to-audit noise, checks that no KEEP line was lost, that only AGENTS.md files changed,
+   and that the fixer's report matches the actual diff. Verdict: `improved`, `mixed`,
+   `no_change` or `regressed`.
+
+Each run keeps its evidence in `<repo>/.oatrta/runs/<run-id>/` (snapshot, both audits, diff,
+reports), git-ignored through `.git/info/exclude`. Nothing is committed; a regressed run can be
+restored from the snapshot.
 
 ## Principle
 
@@ -24,16 +41,20 @@ the skills never invent content: every line comes from a repo file or a maintain
 ```
 shared/                      single source of truth
   guide.md                   criteria, rubric (A to G), blockers (B1 to B4), verdicts
+  audit-schema.json          format of audit.json
   scan_agents_md.py          deterministic scanner, standard library only
-scripts/sync_shared.py       copies shared/ into every skill
+  run_tools.py               audit validation, staleness, run snapshot, scope, diff, restore
+scripts/sync_shared.py       copies shared sources into the skills that need them
 skills/
   agents-md-audit/           SKILL.md, references/report-template.md
   agents-md-refactor/        SKILL.md
   agents-md-create/          SKILL.md, references/template.md
+  agents-md-remediate/       SKILL.md, references/{fixer,auditor,comparator}-brief.md
 .claude-plugin/              plugin.json and marketplace.json (Claude Code and Copilot CLI)
 ```
 
-Each skill carries its own copy of `guide.md` and the scanner so it works when installed alone.
+Each skill carries its own copies of what it needs (guide, scanner, schema, and for
+`remediate` the audit and refactor procedures) so it works when installed alone.
 Always edit in `shared/` and run `python scripts/sync_shared.py` (`--check` for CI).
 
 ## Installation
@@ -58,7 +79,9 @@ Without the plugin: copy the folders under `skills/` into `.claude/skills/` (rea
 Claude Code and Copilot), `.github/skills/` (Copilot) or, for personal use, `~/.claude/skills/`
 and `~/.copilot/skills/`.
 
-The scanner requires Python 3.
+The scanner and `run_tools.py` require Python 3. `agents-md-remediate` needs an agent that
+can spawn subagents (Claude Code, Copilot CLI, VS Code Copilot with `runSubagent` enabled) and
+works best in a git repository.
 
 ## Scanner
 

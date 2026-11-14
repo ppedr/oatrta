@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ppedr/oatrta/blob/main/shared/audit-schema.json",
+  "title": "oatrta AGENTS.md audit result",
+  "description": "Machine-readable output of agents-md-audit. Consumed by agents-md-refactor and agents-md-remediate. Validate with: python run_tools.py validate audit.json",
+  "type": "object",
+  "required": ["schema_version", "repo_root", "created_at", "files", "score", "blockers", "findings", "dispositions", "gaps", "questions"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "repo_root": { "type": "string" },
+    "git_head": { "type": ["string", "null"], "description": "Commit SHA at audit time, null outside git" },
+    "created_at": { "type": "string", "description": "ISO 8601 UTC timestamp" },
+    "files": {
+      "description": "Instruction files the audit read. Fill from: run_tools.py hashes <repo>",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "lines", "sha256"],
+        "properties": {
+          "path": { "type": "string" },
+          "lines": { "type": "integer", "minimum": 0 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "score": {
+      "type": "object",
+      "required": ["total", "grade", "dimensions"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "grade": { "enum": ["A", "B", "C", "D"] },
+        "dimensions": {
+          "type": "object",
+          "required": ["A", "B", "C", "D", "E", "F", "G"],
+          "additionalProperties": false,
+          "properties": {
+            "A": { "$ref": "#/$defs/dimension" },
+            "B": { "$ref": "#/$defs/dimension" },
+            "C": { "$ref": "#/$defs/dimension" },
+            "D": { "$ref": "#/$defs/dimension" },
+            "E": { "$ref": "#/$defs/dimension" },
+            "F": { "$ref": "#/$defs/dimension" },
+            "G": { "$ref": "#/$defs/dimension" }
+          }
+        }
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "key", "file", "line", "summary"],
+        "properties": {
+          "id": { "enum": ["B1", "B2", "B3", "B4"] },
+          "key": { "$ref": "#/$defs/key" },
+          "file": { "type": "string" },
+          "line": { "type": ["integer", "null"] },
+          "summary": { "type": "string", "description": "Never include a secret value" }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "key", "category", "severity", "dimension", "file", "line", "summary", "evidence", "fix"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^F[0-9]+$" },
+          "key": { "$ref": "#/$defs/key" },
+          "category": { "$ref": "#/$defs/category" },
+          "severity": { "enum": ["high", "medium", "low"] },
+          "dimension": { "enum": ["A", "B", "C", "D", "E", "F", "G"] },
+          "file": { "type": "string" },
+          "line": { "type": ["integer", "null"] },
+          "summary": { "type": "string" },
+          "evidence": { "type": "string", "description": "Repository fact that proves the finding, as path:line" },
+          "fix": { "type": "string" }
+        }
+      }
+    },
+    "dispositions": {
+      "description": "One entry per instruction (bullet, sentence or command block) in every audited file",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "start", "end", "verdict"],
+        "properties": {
+          "file": { "type": "string" },
+          "start": { "type": "integer", "minimum": 1 },
+          "end": { "type": "integer", "minimum": 1 },
+          "verdict": { "enum": ["KEEP", "SHARPEN", "FIX", "MOVE:nested", "MOVE:root", "MOVE:link", "MOVE:tooling", "CUT", "REDACT"] },
+          "unverified": { "type": "boolean", "description": "KEEP that encodes maintainer knowledge the audit could not verify" },
+          "target": { "type": "string", "description": "Destination file or doc for MOVE verdicts" },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "gaps": {
+      "description": "Missing instructions proven by repository evidence",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key", "summary", "evidence", "target_file"],
+        "properties": {
+          "key": { "$ref": "#/$defs/key" },
+          "summary": { "type": "string" },
+          "evidence": { "type": "string" },
+          "target_file": { "type": "string" }
+        }
+      }
+    },
+    "questions": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "dimension": {
+      "type": "object",
+      "required": ["points", "max", "na"],
+      "properties": {
+        "points": { "type": "number", "minimum": 0 },
+        "max": { "type": "integer" },
+        "na": { "type": "boolean" },
+        "reason": { "type": "string" }
+      }
+    },
+    "key": {
+      "description": "Stable identity across audits: <category>:<file>:<subject>. Subject is the command, path or heading involved, or a short kebab-case slug. Never a line number",
+      "type": "string",
+      "pattern": "^[a-z_]+:[^:]+:.+$"
+    },
+    "category": {
+      "enum": [
+        "secret", "stale_command", "stale_path", "contradiction",
+        "generic_advice", "discoverable_fact", "directory_listing", "overview_prose",
+        "duplicated_doc", "empty_heading", "vague_rule",
+        "missing_cwd", "undocumented_tooling", "missing_boundary", "missing_validation",
+        "misplaced_scope", "tooling_enforceable", "other"
+      ]
+    }
+  }
+}
