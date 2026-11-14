@@ -31,7 +31,8 @@
 ## Versioning
 - Installed copies only update when `version` changes, so a change that ships to users needs a
   bump: anything under `skills/` or `shared/`, or `.claude-plugin/`. README, this file,
-  `scripts/`, `.gitignore` and `.gitattributes` do not.
+  `scripts/`, `.github/`, `.gitignore` and `.gitattributes` do not: they change nothing an
+  installed skill does.
 - The version lives only in `.claude-plugin/plugin.json`; bump it there, in the same commit as
   the change. Do not add `version` to `marketplace.json`: Claude Code prefers `plugin.json`
   anyway, and a second copy drifts.
