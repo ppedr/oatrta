@@ -14,7 +14,8 @@
 - `shared/guide.md` restates https://aaif.io/blog/writing-an-effective-agents-md as criteria.
   Do not paste text from the post; paraphrase and keep the link.
 - `shared/scan_agents_md.py` and `shared/run_tools.py` are standard library only and must run
-  on Windows and Linux. `run_tools.py` imports from `scan_agents_md.py`; keep them side by side.
+  on Windows and Linux with Python 3.10 or later. Read and write text as UTF-8 explicitly, build
+  paths with `pathlib`, and print repo paths with forward slashes (`rel()`). `run_tools.py` imports from `scan_agents_md.py`; keep them side by side.
 - Rubric points, blockers, verdict names and finding categories are defined in
   `shared/guide.md` and repeated in `shared/audit-schema.json`, `shared/run_tools.py`
   (`DIMENSION_MAX`, `VERDICTS`, `CATEGORIES`), every SKILL.md and
@@ -41,4 +42,8 @@
 
 ## Done means
 - `python scripts/sync_shared.py --check` exits 0 (copies in sync, both versions equal).
+- `python scripts/smoke_test.py` passes. It covers the scanner and every `run_tools.py`
+  subcommand; when you add a subcommand or change an output field, add an assertion there.
+  You can only run it on your own OS: `.github/workflows/ci.yml` runs it on Linux and Windows,
+  Python 3.10 and 3.13, so check CI before calling a change to `shared/*.py` done.
 - `python shared/scan_agents_md.py . --format md` reports no blocker hints for this repo.
