@@ -49,13 +49,16 @@ Use the report format from the refactor procedure, without the score line, and a
 | AGENTS.md:10-12 | SHARPEN | applied | canonical file from answer 3 |
 | AGENTS.md:14 | FIX | skipped | no evidence for the replacement, removed pending confirmation |
 | F4 | finding | applied | |
+| F5 | finding | proposed | `instruction_drift` on CLAUDE.md; bridge text under "Proposed outside AGENTS.md" |
 | gap missing_cwd:AGENTS.md:make-test | gap | applied | |
 
 ## Questions still open
 ```
 
 Every disposition that is not KEEP, every finding id and every gap key from `audit-1.json` must
-appear in the coverage table. The comparator flags missing rows.
+appear in the coverage table. The comparator flags missing rows. Action is `applied`, `skipped`
+or `proposed`. Use `proposed` for an item whose fix is outside AGENTS.md (an
+`instruction_drift` finding, a tooling change), and write the full proposal in the report.
 
 The **last line** of the file is exactly one of:
 

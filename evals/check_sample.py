@@ -17,7 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "evals"))
-from make_sample_repo import FAKE_TOKEN, KEEP_LINE  # noqa: E402
+from make_sample_repo import CLAUDE_MD, FAKE_TOKEN, KEEP_LINE  # noqa: E402
 
 TOOLS = ROOT / "skills" / "agents-md-remediate" / "scripts" / "run_tools.py"
 STAGES = ("audit", "refactor", "create", "remediate")
@@ -57,8 +57,9 @@ class Checker:
         base = self.repo / ".oatrta"
         if not base.is_dir():
             return ""
+        # A remediate run's before/ is a byte-for-byte snapshot for restore; it holds the token by design.
         return "\n".join(p.read_text(encoding="utf-8", errors="replace") for p in base.rglob("*")
-                         if p.is_file() and p.suffix in (".json", ".md"))
+                         if p.is_file() and p.suffix in (".json", ".md") and "before" not in p.relative_to(base).parts)
 
     # ---- shared checks ----
 
@@ -71,6 +72,9 @@ class Checker:
         self.check(".oatrta" not in self.git("status", "--porcelain", "--untracked-files=all"),
                    ".oatrta/ is kept out of git")
         self.check(FAKE_TOKEN not in self.oatrta_text(), "no secret value in any .oatrta/ file")
+        claude = self.repo / "CLAUDE.md"
+        self.check(claude.is_file() and claude.read_bytes() == CLAUDE_MD.encode("utf-8"),
+                   "D13 CLAUDE.md left byte for byte (bridge is only proposed)")
 
     def latest_audit(self) -> dict | None:
         code, r = self.tools("latest-audit", str(self.repo))
@@ -96,6 +100,7 @@ class Checker:
         self.check("├──" not in joined, "D2 directory tree gone")
         self.check("This project is a monorepo" not in joined, "D1 overview prose gone")
         self.check("clean code" not in joined.lower(), "D5 generic advice gone")
+        self.check("Go 1.21" not in joined, "D14 Go version contradicting go.mod gone")
         root = texts.get(self.repo / "AGENTS.md", "")
         self.check("## Security" not in root or root.split("## Security", 1)[1].strip() != "",
                    "D10 empty heading gone")
@@ -112,6 +117,8 @@ class Checker:
         cats = {f["category"] for f in a["findings"]} | {b["key"].split(":")[0] for b in a["blockers"]}
         for cat in ("secret", "stale_command", "stale_path"):
             self.check(cat in cats, f"a {cat} finding or blocker")
+        self.check(any(f["category"] == "instruction_drift" and f["file"] == "CLAUDE.md" for f in a["findings"]),
+                   "D13 instruction_drift finding on CLAUDE.md")
         keep_line_no = (self.repo / "AGENTS.md").read_text(encoding="utf-8").splitlines().index(KEEP_LINE) + 1
         keep = [d for d in a["dispositions"] if d["file"] == "AGENTS.md" and d["start"] <= keep_line_no <= d["end"]]
         self.check(bool(keep) and keep[0]["verdict"] == "KEEP", "D7 classified KEEP")
@@ -134,6 +141,7 @@ class Checker:
         self.check("services/api" in text or (self.repo / "services/api/AGENTS.md").is_file(),
                    "Go service commands documented with their directory")
         self.check("gen/" in text or "generate" in text, "G1 generated gen/ boundary documented")
+        self.check("1.21" not in text and "1.22" not in text, "no Go version that go.mod already pins")
 
     def remediate(self) -> None:
         self.only_agents_md_changed()

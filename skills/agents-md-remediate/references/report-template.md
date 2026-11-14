@@ -58,8 +58,8 @@ Summary: <n> KEEP, <n> SHARPEN, <n> FIX, <n> MOVE, <n> CUT.
 
 ## Topology
 
-<Current placement, conflicts, duplicated instruction files, nested candidates and whether each
-is justified.>
+<Current placement, conflicts, nested candidates and whether each is justified. Every other
+agent's instruction file: does it point to AGENTS.md, and if not, the bridge to use.>
 
 ## Questions for maintainers
 

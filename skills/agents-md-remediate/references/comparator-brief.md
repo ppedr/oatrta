@@ -51,6 +51,16 @@ Classify: **resolved** (only in audit-1), **persisting** (both; note severity ch
 - **pre-existing**: it concerns lines the fixer did not touch. The first audit missed it or the
   auditors disagree. Noise, not caused by the fix.
 
+**Outside AGENTS.md.** The fixer may edit only AGENTS.md files. Put an item under
+`outside_agents_md` instead of the classes above when both hold:
+
+- its fix lies in another file, usually an `instruction_drift` finding on CLAUDE.md, a Copilot
+  file or a custom agent, or a B4 because such a file still holds a rule the fix changed;
+- `fix-report.md` proposes that change.
+
+These items are follow-ups for the user, not regressions. Without the proposal in
+`fix-report.md`, classify them as usual.
+
 ### 5. Preservation
 
 `evidence/keep-check.json` lists KEEP lines from audit-1 that no longer exist in any instruction
@@ -76,8 +86,8 @@ List each gap you find. These are not regressions by themselves, but they lower 
 
 Apply in order:
 
-1. `regressed`: any introduced blocker, any scope violation, any unexplained missing KEEP line,
-   or total score down by more than 5.
+1. `regressed`: any introduced blocker (not counting `outside_agents_md` items), any scope
+   violation, any unexplained missing KEEP line, or total score down by more than 5.
 2. `improved`: total up by 6 or more, or fewer blockers, and none of the above.
 3. `no_change`: total within ±5 and the same blockers. Differences this small are inside
    audit-to-audit noise.
@@ -101,6 +111,7 @@ Apply in order:
     "new_introduced": [{ "id": "F4", "reason": "added line 18 has no working directory" }],
     "new_preexisting": [{ "id": "F5", "reason": "line 30 unchanged since before" }]
   },
+  "outside_agents_md": [{ "id": "F2", "file": "CLAUDE.md", "reason": "instruction_drift; bridge proposed in fix-report.md" }],
   "preservation": { "keep_lines_checked": 12, "missing": [] },
   "scope": { "checked": true, "violations": [] },
   "accountability": { "unexplained_hunks": [], "unlisted_removals": [], "claims_not_in_diff": [], "uncovered_items": [] },
@@ -110,7 +121,7 @@ Apply in order:
 ```
 
 `RUN_DIR/comparison.md`: the same content for a human, verdict first, then score table,
-blockers, regressions, noise, accountability gaps and next step. Quote at most one short line
+blockers, regressions, noise, follow-ups outside AGENTS.md, accountability gaps and next step. Quote at most one short line
 per item and never a secret value.
 
 ## Reply

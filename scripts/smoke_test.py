@@ -95,7 +95,10 @@ def make_audit(repo: Path) -> dict:
                       "summary": "GitHub token"}],
         "findings": [{"id": "F1", "key": "missing_cwd:AGENTS.md:npm-run-test-unit", "category": "missing_cwd",
                       "severity": "high", "dimension": "B", "file": "AGENTS.md", "line": 7,
-                      "summary": "no directory", "evidence": "web/package.json:1", "fix": "From web, run npm test"}],
+                      "summary": "no directory", "evidence": "web/package.json:1", "fix": "From web, run npm test"},
+                     {"id": "F2", "key": "instruction_drift:CLAUDE.md:agents-md", "category": "instruction_drift",
+                      "severity": "medium", "dimension": "G", "file": "CLAUDE.md", "line": None,
+                      "summary": "copies AGENTS.md", "evidence": "CLAUDE.md:3", "fix": "replace with @AGENTS.md"}],
         "dispositions": [
             {"file": "AGENTS.md", "start": 12, "end": 12, "verdict": "KEEP", "unverified": True},
             {"file": "AGENTS.md", "start": 13, "end": 13, "verdict": "CUT"},
@@ -128,6 +131,41 @@ class Scanner(unittest.TestCase):
 
     def test_crlf(self) -> None:
         self.check_bad_repo("\r\n")
+
+    def test_other_instruction_files(self) -> None:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+            repo = make_repo(Path(tmp).resolve())
+            copied = "- Ask before changing files under `migrations/`.\n- Write clean code and follow best practices.\n"
+            write(repo / "CLAUDE.md", "# CLAUDE.md\n\n" + copied)
+            write(repo / "GEMINI.md", "AGENTS.md")  # symlink checked out as text
+            write(repo / "services" / "api" / "CLAUDE.md", "@../../AGENTS.md\n\n- Use plan mode.\n")
+            (repo / "web" / "sub").mkdir()
+            write(repo / "web" / "sub" / "CLAUDE.md", "- Use pnpm here.\n")
+            (repo / ".github" / "agents").mkdir(parents=True)
+            write(repo / ".github" / "agents" / "test-agent.md", "---\nname: test\n---\n" + copied)
+            code, r = run(SCAN, str(repo))
+            self.assertEqual(code, 0, r)
+            others = {o["path"]: o for o in r["other_instruction_files"]}
+            self.assertEqual(sorted(others), [".github/agents/", "CLAUDE.md", "GEMINI.md",
+                                              "services/api/CLAUDE.md", "web/sub/CLAUDE.md"])
+            self.assertEqual(others["CLAUDE.md"]["lines_copied_from_agents_md"], 2)
+            self.assertTrue(others["CLAUDE.md"]["drift_risk"])
+            self.assertTrue(others["GEMINI.md"]["symlink_checked_out_as_text"])
+            self.assertFalse(others["GEMINI.md"]["drift_risk"])
+            self.assertEqual(others["services/api/CLAUDE.md"]["agents_md"], "AGENTS.md")
+            self.assertFalse(others["services/api/CLAUDE.md"]["drift_risk"], "an import is a bridge")
+            self.assertTrue(others["web/sub/CLAUDE.md"]["drift_risk"], "never mentions AGENTS.md")
+            self.assertEqual(others[".github/agents/"]["files"], ["test-agent.md"])
+            self.assertEqual(others[".github/agents/"]["lines_copied_from_agents_md"], 2)
+            self.assertEqual(sorted(r["drift_candidates"]),
+                             [".github/agents/", "CLAUDE.md", "GEMINI.md", "web/sub/CLAUDE.md"])
+            code, md = run(SCAN, str(repo), "--format", "md")
+            self.assertIn("2 line(s) copied from AGENTS.md", md)
+            self.assertIn("symlink checked out", md)
+
+            code, files = run(TOOLS, "hashes", str(repo))
+            self.assertEqual(code, 0, files)
+            self.assertIn("services/api/CLAUDE.md", [f["path"] for f in files])
 
     def test_markdown_output(self) -> None:
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
@@ -254,10 +292,39 @@ class Evals(unittest.TestCase):
             code, scan = run(SCAN, str(sample))
             self.assertEqual(scan["blocker_hints"], {"B1_secret": 1, "B2_stale_command": 1, "B3_stale_path": 1})
             self.assertIn("services/api", scan["nested_candidates"])
+            self.assertEqual(scan["drift_candidates"], ["CLAUDE.md"])
+            claude = next(o for o in scan["other_instruction_files"] if o["path"] == "CLAUDE.md")
+            self.assertEqual(claude["lines_copied_from_agents_md"], 3)
             r = subprocess.run([sys.executable, str(ROOT / "evals" / "check_sample.py"), str(sample),
                                 "--stage", "refactor"], capture_output=True, text=True)
             self.assertEqual(r.returncode, 1, "an untouched sample must fail the refactor checks")
             self.assertIn("FAIL  D6 token removed", r.stdout)
+
+
+@unittest.skipUnless(HAS_GIT, "git not installed")
+class EvalRunner(unittest.TestCase):
+    """evals/run_eval.py needs a model to run; this covers the parts that do not."""
+
+    def test_cli_and_stage_detection(self) -> None:
+        r = subprocess.run([sys.executable, str(ROOT / "evals" / "run_eval.py"), "--stages", "nope"],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("unknown stage", r.stderr)
+        sys.path.insert(0, str(ROOT / "evals"))
+        import run_eval  # noqa: E402
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+            sample = Path(tmp).resolve() / "sample"
+            subprocess.run([sys.executable, str(ROOT / "evals" / "make_sample_repo.py"), str(sample)],
+                           check=True, capture_output=True)
+            for stage in run_eval.STAGES:
+                self.assertEqual(run_eval.stage_done(stage, sample), stage == "create", stage)
+            write(sample / "AGENTS.md", "# AGENTS.md\n")
+            self.assertTrue(run_eval.stage_done("refactor", sample))
+            write(sample / "web" / "NEW.md", "new\n")
+            run_eval.write_diff(sample, Path(tmp) / "diff.patch")
+            patch = (Path(tmp) / "diff.patch").read_text(encoding="utf-8")
+            self.assertIn("-## Overview", patch)
+            self.assertIn("=== new file: web/NEW.md ===", patch)
 
 
 class Repo(unittest.TestCase):

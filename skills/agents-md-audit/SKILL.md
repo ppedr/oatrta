@@ -36,8 +36,9 @@ python <skill-dir>/scripts/scan_agents_md.py <repo-root> --format json
 
 It returns: every AGENTS.md with size and headings, unresolved commands, missing paths, generic
 phrases, overview prose, empty headings, directory listings, possible secrets, other instruction
-files (CLAUDE.md, Copilot instructions, Cursor rules), manifest directories, nested candidates,
-and the tooling present. If Python is unavailable, collect the same facts by hand with file
+files (CLAUDE.md and GEMINI.md at any depth, Copilot instructions and custom agents, Cursor
+rules) with the AGENTS.md each one pairs with and `drift_candidates`, manifest directories,
+nested candidates, and the tooling present. If Python is unavailable, collect the same facts by hand with file
 search.
 
 Scanner hits are **leads**. Confirm each one by reading the line in context. A phrase match
@@ -83,8 +84,13 @@ Verify what can be verified:
   architecture, ownership)?
 - Are repository-wide rules at the root and area rules next to the code?
 - Do any two files give conflicting instructions for the same code?
-- Do other instruction files duplicate or contradict AGENTS.md? Report it; one source of truth
-  with pointers is the target.
+- Do other agents' instruction files point to AGENTS.md, or copy it and drift? Read every file
+  in `other_instruction_files`; `drift_candidates`, `lines_copied_from_agents_md` and
+  `symlink_checked_out_as_text` are leads. Report a confirmed case as one `instruction_drift`
+  finding on that file (guide section 12.1), with the bridge for that tool as the fix. A rule
+  there that conflicts with AGENTS.md for the same code is also B4.
+- Is tool-specific content (one agent's commands, settings or MCP servers) sitting in AGENTS.md?
+  It belongs in that tool's file.
 - Does the scanner list nested candidates with area-specific rules currently crammed into the
   root (or documented nowhere)?
 
@@ -98,8 +104,9 @@ Compare the evidence base against the file. Typical proven gaps:
 - A multi-project repo whose commands have no working directory.
 - No statement of what to run before finishing, while CI has several distinct gates.
 
-Things only a maintainer knows (approval rules, known traps, canonical examples) go under
-"Questions for maintainers", not under findings.
+Things only a maintainer knows go under "Questions for maintainers", not under findings:
+approval rules and what is never allowed (guide section 12.2: failing tests, CI and deploy
+config, commits, pushes and pull requests), known traps, canonical examples.
 
 ### 6. Score
 
@@ -154,6 +161,7 @@ Rules for the JSON:
 - Fill `files` from `python <skill-dir>/scripts/run_tools.py hashes <repo-root>`. The hashes let
   consumers detect that AGENTS.md changed after the audit.
 - `git_head` from `git rev-parse HEAD`, or null outside git.
+- `category` comes from guide section 11.
 - Every finding, blocker and gap gets a stable `key`: `<category>:<file>:<subject>`. The
   subject is the command, path or heading involved, or a short kebab-case slug of the rule.
   Never a line number. The same issue must produce the same key in a later audit, even after

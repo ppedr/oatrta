@@ -39,6 +39,13 @@ OTHER_INSTRUCTION_FILES = [
     "CLAUDE.md", "GEMINI.md", "CONVENTIONS.md", ".cursorrules", ".windsurfrules",
     ".github/copilot-instructions.md", ".junie/guidelines.md",
 ]
+# Names that agents also read below the repository root, next to the code they describe.
+NESTED_INSTRUCTION_NAMES = ("CLAUDE.md", "GEMINI.md")
+# Directories of instruction files (rules, custom agents), listed rather than read one by one.
+INSTRUCTION_DIRS = (".cursor/rules", ".github/instructions", ".github/agents")
+# What git writes instead of a symlink when the checkout has core.symlinks=false (Windows default).
+SYMLINK_STUB_RE = re.compile(r"^(?:\.{1,2}/)*(?:[\w.-]+/)*AGENTS\.md$")
+LIST_MARKER_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+")
 
 TOOLING_FILES = {
     "formatter_linter": [
@@ -131,6 +138,29 @@ def read_text(p: Path) -> str:
         return p.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return ""
+
+
+def other_instruction_files(root: Path) -> list[str]:
+    """Repo-relative paths of instruction files that are not AGENTS.md: the root-level names,
+    plus CLAUDE.md and GEMINI.md in any directory."""
+    found = {name for name in OTHER_INSTRUCTION_FILES if (root / name).is_file()}
+    for d, _, filenames in walk(root):
+        if d == root:
+            continue
+        for name in NESTED_INSTRUCTION_NAMES:
+            if name in filenames and (d / name).is_file():
+                found.add(rel(root, d / name))
+    return sorted(found)
+
+
+def instruction_lines(text: str) -> set[str]:
+    """Normalized instruction lines long enough that a match means a copy, not a coincidence."""
+    out = set()
+    for line in text.splitlines():
+        n = " ".join(LIST_MARKER_RE.sub("", line).split())
+        if len(n) >= 20 and not n.startswith(("#", "```", "~~~", "|")):
+            out.add(n)
+    return out
 
 
 def package_scripts(d: Path) -> set[str] | None:
@@ -413,22 +443,39 @@ def scan_repo(root: Path) -> dict:
             "has_own_task_runner": any((root / d / n).is_file() for n in ("Makefile", "justfile", "Taskfile.yml")),
         })
 
+    agents_text = {rel(root, p.parent): read_text(p) for p in agents_files}
+
+    def agents_md_of(scope: str | None) -> str | None:
+        return None if scope is None else "AGENTS.md" if scope == "." else f"{scope}/AGENTS.md"
+
     others = []
-    root_agents = root / "AGENTS.md"
-    root_agents_text = read_text(root_agents) if root_agents.is_file() else None
-    for name in OTHER_INSTRUCTION_FILES:
-        p = root / name
-        if p.exists():
-            text = read_text(p) if p.is_file() else ""
-            others.append({
-                "path": name, "lines": len(text.splitlines()), "is_symlink": p.is_symlink(),
-                "identical_to_root_agents_md": root_agents_text is not None and text == root_agents_text,
-                "mentions_agents_md": "AGENTS.md" in text,
-            })
-    for sub in (".cursor/rules", ".github/instructions"):
+    for path in other_instruction_files(root):
+        p = root / path
+        text = read_text(p)
+        scope = covered_by(rel(root, p.parent))
+        pair_text = agents_text.get(scope) if scope else None
+        is_symlink = p.is_symlink()
+        identical = pair_text is not None and text == pair_text
+        stub = not is_symlink and bool(SYMLINK_STUB_RE.match(text.strip()))
+        copied = len(instruction_lines(text) & instruction_lines(pair_text)) if pair_text and not identical else 0
+        mentions = "AGENTS.md" in text
+        others.append({
+            "path": path, "lines": len(text.splitlines()), "agents_md": agents_md_of(scope),
+            "is_symlink": is_symlink, "identical_to_agents_md": identical, "mentions_agents_md": mentions,
+            "symlink_checked_out_as_text": stub, "lines_copied_from_agents_md": copied,
+            "drift_risk": pair_text is not None and not (is_symlink or identical or stub)
+                          and (copied > 0 or not mentions),
+        })
+    root_text = agents_text.get(".")
+    for sub in INSTRUCTION_DIRS:
         p = root / sub
         if p.is_dir():
-            others.append({"path": sub + "/", "files": sorted(x.name for x in p.iterdir())[:30]})
+            members = sorted(x for x in p.rglob("*") if x.is_file())
+            copied = sum(len(instruction_lines(read_text(x)) & instruction_lines(root_text))
+                         for x in members) if root_text else 0
+            others.append({"path": sub + "/", "files": [rel(p, x) for x in members][:30],
+                           "agents_md": "AGENTS.md" if root_text is not None else None,
+                           "lines_copied_from_agents_md": copied, "drift_risk": copied > 0})
 
     tooling = {k: [n for n in names if (root / n).exists()] for k, names in TOOLING_FILES.items()}
     tooling["ci"] = tooling["ci"] + workflows
@@ -444,6 +491,8 @@ def scan_repo(root: Path) -> dict:
         "has_root_agents_md": "." in agents_scopes,
         "agents_md_files": files,
         "other_instruction_files": others,
+        "drift_candidates": [o["path"] for o in others
+                             if o.get("drift_risk") or o.get("symlink_checked_out_as_text")],
         "manifest_dirs": {"root": sorted(root_ecos), "nested": boundaries},
         "nested_candidates": [b["dir"] for b in boundaries
                               if not b["has_own_agents_md"] and (b["differs_from_root"] or b["has_own_task_runner"])],
@@ -462,7 +511,22 @@ def to_markdown(r: dict) -> str:
            f"- AGENTS.md files: {r['agents_md_count']} (root: {'yes' if r['has_root_agents_md'] else 'no'})",
            f"- Blocker hints: {r['blocker_hints']}",
            f"- Nested candidates without their own file: {r['nested_candidates'] or 'none'}",
-           f"- Other instruction files: {[o['path'] for o in r['other_instruction_files']] or 'none'}", ""]
+           f"- Other instruction files: {[o['path'] for o in r['other_instruction_files']] or 'none'}",
+           f"- Drift candidates (copy or bypass AGENTS.md instead of pointing to it): {r['drift_candidates'] or 'none'}",
+           ""]
+    if r["drift_candidates"]:
+        out.append("## Other instruction files")
+        for o in r["other_instruction_files"]:
+            if o["path"] not in r["drift_candidates"]:
+                continue
+            if o.get("symlink_checked_out_as_text"):
+                why = "symlink checked out as a one-line text file (core.symlinks=false); agents read only the path"
+            elif o.get("lines_copied_from_agents_md"):
+                why = f"{o['lines_copied_from_agents_md']} line(s) copied from {o['agents_md']}"
+            else:
+                why = f"never mentions {o['agents_md']}"
+            out.append(f"- `{o['path']}`: {why}")
+        out.append("")
     for f in r["agents_md_files"]:
         out += [f"## {f['path']}",
                 f"{f['lines']} lines, {f['words']} words, ~{f['approx_tokens']} tokens, {len(f['commands'])} commands", ""]

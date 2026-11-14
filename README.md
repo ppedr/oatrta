@@ -134,14 +134,20 @@ works best in a git repository.
 ## Checking the skills
 
 `scripts/smoke_test.py` (run in CI on Linux and Windows) covers the scripts. The skill
-workflows themselves need a model, so they are checked by hand on a generated sample repository
-with planted defects:
+workflows need a model, so they run on a generated sample repository with planted defects:
 
 ```
-python evals/make_sample_repo.py <empty dir>
-# run a skill there, then:
-python evals/check_sample.py <dir> --stage audit
+python evals/run_eval.py                     # all four skills, in parallel
+python evals/run_eval.py --stages audit      # one of them
 ```
+
+For each skill it makes a fresh sample, runs the skill in headless Claude Code with this checkout
+as the plugin, answers the maintainer questions, runs `evals/check_sample.py`, and has a second
+session judge the result against `evals/expected.md`. Results go to
+`<temp>/oatrta-evals/<timestamp>/report.md`. It needs the `claude` CLI, logged in, and costs
+model usage. The skill sessions run with permission checks skipped, so that a denied command
+does not change what the skill does; they work in a throwaway sample, and the run fails if this
+checkout changes. Pass `--allowlist` to restrict them to a fixed list of commands instead.
 
 `evals/expected.md` lists every planted defect and what each skill must and must not do with it.
 
@@ -153,8 +159,9 @@ python shared/scan_agents_md.py <repo> --format md
 
 It collects facts and does not score: AGENTS.md files and their size, commands that do not
 resolve (npm script, make target, wrapper), missing paths, generic phrases, overview prose, empty
-headings, directory trees, possible secrets, other instruction files (CLAUDE.md, Copilot,
-Cursor), directories with manifests and candidates for nested AGENTS.md files. The skill does the
+headings, directory trees, possible secrets, other instruction files (CLAUDE.md and GEMINI.md at
+any depth, Copilot instructions and custom agents, Cursor) with the lines they copy from
+AGENTS.md, directories with manifests and candidates for nested AGENTS.md files. The skill does the
 scoring with the rubric in `guide.md`.
 
 ## Rubric
