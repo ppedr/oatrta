@@ -56,19 +56,26 @@ def git(repo: Path, *args: str) -> None:
                     "-c", "core.autocrlf=false", *args], check=True, capture_output=True)
 
 
+def write(path: Path, text: str) -> None:
+    """Write exact bytes: Path.write_text would turn \\n into \\r\\n on Windows."""
+    path.write_bytes(text.encode("utf-8"))
+
+
 def make_repo(base: Path, newline: str = "\n") -> Path:
     repo = base / "repo"
     (repo / "services" / "api").mkdir(parents=True)
     (repo / "web").mkdir()
-    (repo / "services" / "api" / "go.mod").write_text("module x\n", encoding="utf-8")
-    (repo / "services" / "api" / "Makefile").write_text("test-unit:\n\tgo test ./...\n", encoding="utf-8")
-    (repo / "web" / "package.json").write_text('{"scripts": {"test": "jest"}}', encoding="utf-8")
-    (repo / "main.go").write_text("package main\n", encoding="utf-8")
+    write(repo / "services" / "api" / "go.mod", "module x\n")
+    write(repo / "services" / "api" / "Makefile", "test-unit:\n\tgo test ./...\n")
+    write(repo / "web" / "package.json", '{"scripts": {"test": "jest"}}')
+    write(repo / "main.go", "package main\n")
     (repo / "migrations").mkdir()
-    (repo / "migrations" / "001_init.sql").write_text("select 1;\n", encoding="utf-8")
+    write(repo / "migrations" / "001_init.sql", "select 1;\n")
     (repo / "AGENTS.md").write_bytes(BAD_AGENTS_MD.replace("\n", newline).encode("utf-8"))
     if HAS_GIT:
         git(repo, "init", "-q")
+        # Repo-local, so the scripts' own git calls ignore a global core.autocrlf (true on Windows runners).
+        git(repo, "config", "core.autocrlf", "false")
         git(repo, "add", ".")
         git(repo, "commit", "-qm", "init")
     return repo
@@ -100,7 +107,7 @@ def make_audit(repo: Path) -> dict:
 class Scanner(unittest.TestCase):
     def check_bad_repo(self, newline: str) -> None:
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
-            repo = make_repo(Path(tmp), newline)
+            repo = make_repo(Path(tmp).resolve(), newline)
             code, r = run(SCAN, str(repo))
             self.assertEqual(code, 0, r)
             f = r["agents_md_files"][0]
@@ -124,7 +131,7 @@ class Scanner(unittest.TestCase):
 
     def test_markdown_output(self) -> None:
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
-            repo = make_repo(Path(tmp))
+            repo = make_repo(Path(tmp).resolve())
             code, r = run(SCAN, str(repo), "--format", "md")
             self.assertEqual(code, 0)
             self.assertIn("Possible secrets", r)
@@ -134,9 +141,9 @@ class Scanner(unittest.TestCase):
 class Validate(unittest.TestCase):
     def test_valid_and_invalid(self) -> None:
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
-            repo = make_repo(Path(tmp))
+            repo = make_repo(Path(tmp).resolve())
             audit = make_audit(repo)
-            path = Path(tmp) / "audit.json"
+            path = Path(tmp).resolve() / "audit.json"
             path.write_text(json.dumps(audit), encoding="utf-8")
             code, r = run(TOOLS, "validate", str(path))
             self.assertEqual(code, 0, r)
@@ -156,7 +163,7 @@ class Validate(unittest.TestCase):
 class RemediationRun(unittest.TestCase):
     def test_full_cycle(self) -> None:
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
-            repo = make_repo(Path(tmp))
+            repo = make_repo(Path(tmp).resolve())
             original = (repo / "AGENTS.md").read_bytes()
 
             code, r = run(TOOLS, "latest-audit", str(repo))
@@ -164,28 +171,27 @@ class RemediationRun(unittest.TestCase):
 
             code, d = run(TOOLS, "audit-dir", str(repo))
             self.assertEqual(code, 0, d)
-            audit_json = Path(d["audit_json"])
-            self.assertEqual(audit_json.parent.parent, repo / ".oatrta" / "audit")
+            audit_json = Path(d["audit_json"]).resolve()
+            self.assertEqual(audit_json.parent.parent, (repo / ".oatrta" / "audit").resolve())
             audit_json.write_text(json.dumps(make_audit(repo)), encoding="utf-8")
             exclude = (repo / ".git" / "info" / "exclude").read_text(encoding="utf-8").splitlines()
             self.assertIn("/.oatrta/", exclude)
 
             code, r = run(TOOLS, "latest-audit", str(repo))
-            self.assertEqual((code, Path(r["audit_json"])), (0, audit_json))
+            self.assertEqual((code, Path(r["audit_json"]).resolve()), (0, audit_json.resolve()))
             code, r = run(TOOLS, "stale", str(audit_json), str(repo))
             self.assertEqual(code, 0, r)
 
             code, init = run(TOOLS, "init", str(repo))
             self.assertEqual(code, 0, init)
-            run_dir = Path(init["run_dir"])
-            self.assertEqual(run_dir.parent, repo / ".oatrta" / "remediate")
+            run_dir = Path(init["run_dir"]).resolve()
+            self.assertEqual(run_dir.parent, (repo / ".oatrta" / "remediate").resolve())
             self.assertTrue((run_dir / "before" / "AGENTS.md").is_file())
 
             # A misbehaving fixer: drops the KEEP line, adds a nested file, edits code.
-            (repo / "AGENTS.md").write_text("# AGENTS.md\n\n- From `web`, run `npm test`.\n", encoding="utf-8")
-            (repo / "services" / "api" / "AGENTS.md").write_text("# api\n\n- Go only.\n", encoding="utf-8")
-            with (repo / "main.go").open("a", encoding="utf-8") as fh:
-                fh.write("// edit\n")
+            write(repo / "AGENTS.md", "# AGENTS.md\n\n- From `web`, run `npm test`.\n")
+            write(repo / "services" / "api" / "AGENTS.md", "# api\n\n- Go only.\n")
+            write(repo / "main.go", "package main\n// edit\n")
 
             code, r = run(TOOLS, "stale", str(audit_json), str(repo))
             self.assertEqual(code, 1)
@@ -226,7 +232,7 @@ class RemediationRun(unittest.TestCase):
 
     def test_legacy_exclude_is_widened(self) -> None:
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
-            repo = make_repo(Path(tmp))
+            repo = make_repo(Path(tmp).resolve())
             excl = repo / ".git" / "info" / "exclude"
             excl.write_text("/.oatrta/remediate/\n", encoding="utf-8")
             run(TOOLS, "audit-dir", str(repo))
@@ -243,7 +249,7 @@ class Repo(unittest.TestCase):
 
     def test_no_bytecode_written(self) -> None:
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
-            repo = make_repo(Path(tmp))
+            repo = make_repo(Path(tmp).resolve())
             run(TOOLS, "hashes", str(repo))
             self.assertFalse((TOOLS.parent / "__pycache__").exists() and
                              any((TOOLS.parent / "__pycache__").glob("run_tools*")),
