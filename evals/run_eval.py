@@ -84,7 +84,10 @@ does not cover, if any, most serious first. Never copy a token or secret value.
 Write the result to `judgment.md` in the current directory. Its last line is exactly
 `VERDICT: pass` (no FAIL) or `VERDICT: fail`."""
 
-SESSION_TOOLS = "Bash,PowerShell,Read,Glob,Grep,Edit,Write,Skill,Task"
+# The CLI's reply when the account is out of usage; the run then says nothing about the skills.
+LIMIT_RE = re.compile(r"(?i)hit your .*limit|usage limit|spend limit|rate limit")
+
+SESSION_TOOLS ="Bash,PowerShell,Read,Glob,Grep,Edit,Write,Skill,Task"
 JUDGE_TOOLS = "Read,Glob,Grep,Write"
 # Used only with --allowlist. Anything else is denied and reported in result.json. Denials make the
 # skill retry or work around a command, which skews the eval, so the default skips permission checks.
@@ -129,6 +132,7 @@ class Session:
         self.denials: list = []
         self.events: list[dict] = []
         self.errors: list[str] = []
+        self.limit_hit = False
 
     def command(self) -> list[str]:
         cmd = [self.opts.claude, "-p", "--output-format", "stream-json", "--verbose",
@@ -180,7 +184,11 @@ class Session:
                 self.cost += e.get("total_cost_usd") or 0
                 self.denials += e.get("permission_denials") or []
                 if e.get("is_error"):
-                    self.errors.append(f"turn {n}: {e.get('subtype')}")
+                    if LIMIT_RE.search(reply):
+                        self.limit_hit = True
+                        self.errors.append(f"usage limit reached on turn {n}: {reply.strip()[:160]}")
+                    else:
+                        self.errors.append(f"turn {n} failed ({e.get('subtype')}): {reply.strip()[:160]}")
             elif e.get("type") == "system" and e.get("subtype") == "init":
                 self.session_id = e.get("session_id") or self.session_id
         (self.logdir / f"{name}reply-{n}.md").write_text(reply, encoding="utf-8")
@@ -285,6 +293,13 @@ def run_stage(stage: str, base: Path, opts) -> dict:
     print(f"{prefix}check: {res['check']}", flush=True)
 
     res["judge"] = None
+    res["limit_hit"] = s.limit_hit
+    if s.limit_hit:
+        res["minutes"] = round((time.monotonic() - started) / 60, 1)
+        res["ok"] = False
+        (sdir / "result.json").write_text(json.dumps(res, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"{prefix}usage limit reached; this stage says nothing about the skill", flush=True)
+        return res
     if not opts.no_judge:
         j = Session(sdir, sdir, opts, judge=True, prefix=prefix)
         j.send(JUDGE_PROMPT.format(stage=stage, expected=(EVALS / "expected.md").as_posix()))
@@ -304,7 +319,12 @@ def run_stage(stage: str, base: Path, opts) -> dict:
 
 
 def report(base: Path, results: list[dict]) -> str:
-    lines = [f"# oatrta eval run {base.name}", "",
+    limited = [r["stage"] for r in results if r.get("limit_hit")]
+    lines = [f"# oatrta eval run {base.name}", ""]
+    if limited:
+        lines += [f"**Usage limit reached in: {', '.join(limited)}.** Those stages did not run the skill; "
+                  "rerun them when the limit resets.", ""]
+    lines += [
              "| Stage | OK | Checks | Judge | Turns | Cost | Min | Denied tools | Errors |",
              "|---|---|---|---|---|---|---|---|---|"]
     for r in results:
