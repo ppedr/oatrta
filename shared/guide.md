@@ -194,8 +194,9 @@ disagree with the AAIF source, the source wins.
 - Content that only one tool understands (its slash commands, settings, MCP servers configured
   for it) belongs in that tool's file, not in AGENTS.md.
 - A file that copies AGENTS.md lines, or holds rules for the same code without pointing to
-  AGENTS.md, is an `instruction_drift` finding on that file. Its fix is in that file: reduce it to
-  the bridge plus tool-specific additions. The skills propose that change and make it only on
+  AGENTS.md, is one `instruction_drift` finding on that file, keyed
+  `instruction_drift:<file>:agents-md` so that later audits match it. Its fix is in that file:
+  reduce it to the bridge plus tool-specific additions. The skills propose that change and make it only on
   request.
 - A rule in that file that conflicts with AGENTS.md for the same code is also blocker B4.
 - Blockers B2 and B3 are judged on AGENTS.md files. A stale command or path in another tool's
