@@ -57,8 +57,9 @@ class Checker:
         base = self.repo / ".oatrta"
         if not base.is_dir():
             return ""
+        # A remediate run's before/ is a byte-for-byte snapshot for restore; it holds the token by design.
         return "\n".join(p.read_text(encoding="utf-8", errors="replace") for p in base.rglob("*")
-                         if p.is_file() and p.suffix in (".json", ".md"))
+                         if p.is_file() and p.suffix in (".json", ".md") and "before" not in p.relative_to(base).parts)
 
     # ---- shared checks ----
 
