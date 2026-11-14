@@ -145,7 +145,9 @@ For each skill it makes a fresh sample, runs the skill in headless Claude Code w
 as the plugin, answers the maintainer questions, runs `evals/check_sample.py`, and has a second
 session judge the result against `evals/expected.md`. Results go to
 `<temp>/oatrta-evals/<timestamp>/report.md`. It needs the `claude` CLI, logged in, and costs
-model usage.
+model usage. The skill sessions run with permission checks skipped, so that a denied command
+does not change what the skill does; they work in a throwaway sample, and the run fails if this
+checkout changes. Pass `--allowlist` to restrict them to a fixed list of commands instead.
 
 `evals/expected.md` lists every planted defect and what each skill must and must not do with it.
 

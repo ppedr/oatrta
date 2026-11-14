@@ -8,7 +8,9 @@
 For every stage it:
   1. makes a fresh sample repository with evals/make_sample_repo.py;
   2. runs the skill in headless Claude Code (`claude -p`) with this checkout as the only plugin
-     (`--plugin-dir`, `--setting-sources project`, so an installed copy of oatrta is not loaded);
+     (`--plugin-dir`, `--setting-sources project`, so an installed copy of oatrta is not loaded),
+     with permission checks skipped so a denied command cannot change how the skill behaves
+     (`--allowlist` to restrict it). The run fails if this checkout changes meanwhile;
   3. when the skill stops to ask the maintainer, resumes the same session with MAINTAINER_ANSWERS;
   4. runs evals/check_sample.py for the stage;
   5. asks a second, read-only session to judge the result against the stage's section of
@@ -84,7 +86,8 @@ Write the result to `judgment.md` in the current directory. Its last line is exa
 
 SESSION_TOOLS = "Bash,PowerShell,Read,Glob,Grep,Edit,Write,Skill,Task"
 JUDGE_TOOLS = "Read,Glob,Grep,Write"
-# Commands the skills run. Anything else is denied and reported in result.json.
+# Used only with --allowlist. Anything else is denied and reported in result.json. Denials make the
+# skill retry or work around a command, which skews the eval, so the default skips permission checks.
 ALLOWED = [
     "Skill", "Task", "Read", "Glob", "Grep",
     *(f"{shell}({cmd} *)" for shell in ("Bash", "PowerShell") for cmd in (
@@ -140,7 +143,7 @@ class Session:
             cmd += ["--max-budget-usd", str(self.opts.budget)]
         if self.session_id:
             cmd += ["--resume", self.session_id]
-        if self.opts.skip_permissions and not self.judge:
+        if not self.opts.allowlist and not self.judge:
             cmd += ["--dangerously-skip-permissions"]
         else:
             cmd += ["--permission-mode", "acceptEdits", "--allowedTools",
@@ -335,8 +338,9 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--timeout", type=int, default=45, help="minutes per claude invocation (default 45)")
     ap.add_argument("--max-turns", type=int, default=3, help="skill turns per stage, answers included (default 3)")
     ap.add_argument("--no-judge", action="store_true", help="skip the judge session")
-    ap.add_argument("--skip-permissions", action="store_true",
-                    help="run the skill session with --dangerously-skip-permissions instead of the allowlist")
+    ap.add_argument("--allowlist", action="store_true",
+                    help="run the skill session with the ALLOWED allowlist instead of "
+                         "--dangerously-skip-permissions (the default; the judge always uses read-only tools)")
     opts = ap.parse_args(argv)
     stages = [s.strip() for s in opts.stages.split(",") if s.strip()]
     bad = [s for s in stages if s not in STAGES]
