@@ -63,7 +63,7 @@ CLAUDE_MD = """# CLAUDE.md
 - Go code in `services/api` must be built with `make build`, not `go build`, because the target sets the `integration` build tag.
 - Use Conventional Commits: `feat:`, `fix:`, `chore:`.
 - Keep the subject under 72 characters.
-- Use plan mode before editing more than three files.
+- Prefer the Grep tool over shell grep.
 """
 
 FILES = {
@@ -96,7 +96,9 @@ lint:
 generate:
 \tcd ../.. && buf generate
 """,
-    "services/api/internal/http/orders_handler.go": "package http\n\n// OrdersHandler is the reference HTTP handler.\ntype OrdersHandler struct{}\n",
+    # D12: two handlers in different styles and nothing marks one as canonical; only a maintainer can say.
+    "services/api/internal/http/orders_handler.go": "package http\n\n// OrdersHandler serves /orders.\ntype OrdersHandler struct{ store Store }\n",
+    "services/api/internal/http/health_handler.go": "package http\n\n// HealthHandler serves /healthz.\nfunc HealthHandler() {}\n",
     ".github/workflows/ci.yml": """name: ci
 on: [push]
 jobs:
