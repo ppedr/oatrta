@@ -88,18 +88,26 @@ remains is usually short. That is correct.
 ### 5. Interview the maintainer
 
 The highest-value content is not in the repository. Ask up to five questions in one batch,
-phrased against what you found, for example:
+phrased against what you found.
 
-1. Which actions need human approval first, and which must an agent never do (migrations,
-   dependency upgrades, public API or schema changes, releases, CI or deploy config, skipping or
-   deleting a failing test, committing, pushing, opening pull requests)?
+Always ask question 1, and name in it every item the repository does not settle, adapted to
+what exists here. Do not shorten the list: each item left out is a rule the file cannot have.
+
+1. Which actions need human approval first, and which must an agent never do? Name: migrations,
+   dependency upgrades, public API or schema changes, releases, CI configuration, deploy or
+   production configuration, deleting, skipping or weakening a failing test, committing,
+   pushing, opening pull requests.
+
+The other four are examples:
+
 2. Which mistakes do reviewers correct again and again?
 3. For `<pattern found>`, which file is the canonical example to copy?
 4. Is there a dependency direction or layer rule not enforced by tooling?
 5. Anything that looks editable but must not be edited, or looks dead but is not?
 
-Skip questions the repository already answered. If nobody can answer (unattended run), write
-only the evidence-backed lines and list the questions in the report. Do not put TODO
+Skip questions the repository already answered. Any item of question 1 left unanswered goes
+under "Open questions for maintainers" in the report, by name. If nobody can answer (unattended
+run), write only the evidence-backed lines and list the questions in the report. Do not put TODO
 placeholders in the file.
 
 ### 6. Verify commands

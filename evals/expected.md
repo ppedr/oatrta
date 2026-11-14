@@ -86,7 +86,9 @@ Must:
 - Take commands from CI with their directories (`make lint`, `make test` in `services/api`;
   `npm test` in `web`) and say which ones it ran.
 - Document G1 (edit `proto/`, run `make generate`, do not edit `gen/`).
-- Ask about approvals, D7-like rules and the canonical handler instead of guessing.
+- Ask about approvals, D7-like rules and the canonical handler instead of guessing. The
+  approvals question names failing tests, CI config, deploy config and git actions; any of
+  them left unanswered appears by name under open questions.
 - Self-audit to grade A, or deliver a smaller file and say what is missing.
 - Mine CLAUDE.md (the `make build` rule is real evidence), leave it untouched and suggest the
   `@AGENTS.md` bridge as a follow-up, keeping its Grep line there.
