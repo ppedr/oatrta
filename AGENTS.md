@@ -23,7 +23,7 @@
 - Everything the skills write in a target repo goes under `.oatrta/<skill>/` (`audit`,
   `remediate`). The paths are constants at the top of `shared/run_tools.py`; skills get them from
   its subcommands and never build them by hand. Every subcommand that creates something under
-  `.oatrta/` calls `ensure_excluded`, which keeps the whole folder out of git through
+  `.oatrta/<skill>/` calls `ensure_excluded`, which keeps the whole folder out of git through
   `.git/info/exclude`.
 - Changing a field in `shared/audit-schema.json` means updating `cmd_validate` in
   `shared/run_tools.py` and the briefs in `skills/agents-md-remediate/references/`.
@@ -32,16 +32,18 @@
 - Installed copies only update when `version` changes, so a change that ships to users needs a
   bump: anything under `skills/` or `shared/`, or `.claude-plugin/`. README, this file,
   `scripts/`, `.gitignore` and `.gitattributes` do not.
-- Set the same value in `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`, in
-  the same commit as the change.
+- The version lives only in `.claude-plugin/plugin.json`; bump it there, in the same commit as
+  the change. Do not add `version` to `marketplace.json`: Claude Code prefers `plugin.json`
+  anyway, and a second copy drifts.
 - Bump once per change set: if `git diff origin/main -- .claude-plugin/` already shows a bump,
   do not bump again.
 - Until 1.0: minor (`0.4.1` → `0.5.0`) for a new skill, a new `run_tools.py` subcommand, a
-  change to `shared/audit-schema.json`, or a changed path under `.oatrta/`; patch (`0.4.1` →
+  change to `shared/audit-schema.json`, or a changed path under `.oatrta/<skill>/`; patch (`0.4.1` →
   `0.4.2`) for anything else, such as wording or a bug fix.
 
 ## Done means
-- `python scripts/sync_shared.py --check` exits 0 (copies in sync, both versions equal).
+- `python scripts/sync_shared.py --check` exits 0 (copies in sync, no version in
+  `marketplace.json`).
 - `python scripts/smoke_test.py` passes. It covers the scanner and every `run_tools.py`
   subcommand; when you add a subcommand or change an output field, add an assertion there.
   You can only run it on your own OS: `.github/workflows/ci.yml` runs it on Linux and Windows,

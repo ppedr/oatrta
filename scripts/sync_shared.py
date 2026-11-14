@@ -33,11 +33,12 @@ EXTRA = {
 
 
 def version_mismatch() -> str | None:
-    plugin = json.loads((ROOT / ".claude-plugin/plugin.json").read_text(encoding="utf-8"))
+    """The version lives only in plugin.json. A second copy in marketplace.json would drift."""
     market = json.loads((ROOT / ".claude-plugin/marketplace.json").read_text(encoding="utf-8"))
-    listed = [p.get("version") for p in market.get("plugins", []) if p.get("name") == plugin.get("name")]
-    if listed != [plugin.get("version")]:
-        return f"version mismatch: plugin.json {plugin.get('version')}, marketplace.json {listed}"
+    dup = [p.get("name") for p in market.get("plugins", []) if "version" in p]
+    if dup or "version" in market or "version" in market.get("metadata", {}):
+        return ("marketplace.json must not set version; bump it only in .claude-plugin/plugin.json"
+                + (f" (entries: {dup})" if dup else ""))
     return None
 
 

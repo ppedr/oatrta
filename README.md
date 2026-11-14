@@ -120,8 +120,8 @@ copilot plugin update oatrta
 ```
 
 Start a new session afterwards (`/reload-plugins` in Claude Code, `/restart` in Copilot CLI).
-Releases bump `version` in both files under `.claude-plugin/`; without a new version, installed
-copies are not updated.
+Releases bump `version` in `.claude-plugin/plugin.json`, the only place it is set; without a
+new version, installed copies are not updated.
 
 Without the plugin: copy the folders under `skills/` into `.claude/skills/` (read by both
 Claude Code and Copilot), `.github/skills/` (Copilot) or, for personal use, `~/.claude/skills/`
