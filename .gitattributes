@@ -1,0 +1,2 @@
+# Keep LF everywhere, on every OS, regardless of core.autocrlf.
+* text=auto eol=lf
