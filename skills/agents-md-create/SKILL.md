@@ -38,9 +38,10 @@ python <skill-dir>/scripts/scan_agents_md.py <repo-root> --format json
 Use: existing AGENTS.md files, other instruction files, manifest directories,
 `nested_candidates`, tooling present.
 
-If other instruction files exist (CLAUDE.md, Copilot instructions, Cursor rules), read them.
-They are prior maintainer knowledge: mine them with the same filter as everything else, and
-plan for AGENTS.md to become the single source they point to. Do not edit them unless asked.
+If other instruction files exist (CLAUDE.md, GEMINI.md, Copilot instructions or custom agents,
+Cursor rules), read them. They are prior maintainer knowledge: mine them with the same filter as
+everything else, and plan for AGENTS.md to become the single source they point to (guide section
+12.1). Do not edit them unless asked. Tool-specific lines stay in the tool's file.
 
 ### 2. Decide the topology
 
@@ -89,8 +90,9 @@ remains is usually short. That is correct.
 The highest-value content is not in the repository. Ask up to five questions in one batch,
 phrased against what you found, for example:
 
-1. Which actions need human approval before an agent does them (migrations, dependency
-   upgrades, public API or schema changes, releases)?
+1. Which actions need human approval first, and which must an agent never do (migrations,
+   dependency upgrades, public API or schema changes, releases, CI or deploy config, skipping or
+   deleting a failing test, committing, pushing, opening pull requests)?
 2. Which mistakes do reviewers correct again and again?
 3. For `<pattern found>`, which file is the canonical example to copy?
 4. Is there a dependency direction or layer rule not enforced by tooling?
@@ -113,8 +115,10 @@ For every command going into the file:
 
 Start from `references/template.md`. Delete every section with nothing consequential to say.
 
-- Exact commands with the working directory.
+- Exact commands with the working directory, near the top.
 - Name files and paths; no "follow existing patterns".
+- Keep "ask first" apart from "never" when the maintainer gave both.
+- No toolchain version a manifest already pins (guide section 12.3).
 - One instruction per bullet. Add the reason when it prevents a wrong workaround.
 - Definition of done separates quick iteration checks from the full pre-finish check and scales
   with the change.
@@ -147,7 +151,8 @@ is missing; do not fill the gap with guesses.
 ## Commands not executed
 ## Open questions for maintainers
 ## Suggested follow-ups
-<other instruction files to consolidate, rules better enforced by tooling>
+<rules better enforced by tooling; for each other instruction file, the bridge text from guide
+section 12.1 to replace it with, keeping its tool-specific lines>
 ```
 
 Close with the evaluation advice: try representative tasks with the agents the team uses, with

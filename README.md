@@ -153,8 +153,9 @@ python shared/scan_agents_md.py <repo> --format md
 
 It collects facts and does not score: AGENTS.md files and their size, commands that do not
 resolve (npm script, make target, wrapper), missing paths, generic phrases, overview prose, empty
-headings, directory trees, possible secrets, other instruction files (CLAUDE.md, Copilot,
-Cursor), directories with manifests and candidates for nested AGENTS.md files. The skill does the
+headings, directory trees, possible secrets, other instruction files (CLAUDE.md and GEMINI.md at
+any depth, Copilot instructions and custom agents, Cursor) with the lines they copy from
+AGENTS.md, directories with manifests and candidates for nested AGENTS.md files. The skill does the
 scoring with the rubric in `guide.md`.
 
 ## Rubric

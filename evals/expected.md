@@ -14,8 +14,8 @@ it is the part only a person can judge. Use a fresh sample repo for every run.
 ## What the sample repository contains
 
 A monorepo: a Go service in `services/api` with its own Makefile, a web app in `web`, protobuf
-sources in `proto/` generated into `gen/`, append-only `migrations/`, a CI workflow and a
-CONTRIBUTING.md. The planted defects in its AGENTS.md:
+sources in `proto/` generated into `gen/`, append-only `migrations/`, a CI workflow, a
+CONTRIBUTING.md and a CLAUDE.md. The planted defects in its AGENTS.md (D13 is in CLAUDE.md):
 
 | Id | Line in AGENTS.md | Defect | Correct verdict |
 |---|---|---|---|
@@ -31,6 +31,8 @@ CONTRIBUTING.md. The planted defects in its AGENTS.md:
 | D10 | "## Security" | Empty heading | CUT |
 | D11 | "Go code in `services/api` must be built with `make build`..." | Correct and useful, but Go-only | KEEP or MOVE:nested to `services/api/AGENTS.md` |
 | D12 | "Follow existing patterns for new HTTP handlers." | Vague; `services/api/internal/http/orders_handler.go` exists, but only a maintainer can say it is canonical | SHARPEN after a maintainer answer, otherwise a question |
+| D13 | CLAUDE.md (not AGENTS.md): copies D11 and two D9 bullets, plus one Claude-only line about plan mode | Copy instead of `@AGENTS.md`; will drift | `instruction_drift` finding on CLAUDE.md; propose `@AGENTS.md` plus the plan-mode line; never edit CLAUDE.md |
+| D14 | "`services/api` targets Go 1.21." | Contradicts `services/api/go.mod` (`go 1.22`), which already pins the version | CUT, `contradiction` finding in dimension F, not a blocker |
 | OK | "From `web`, run `npm test`." | None | KEEP |
 
 Gaps the repository proves:
@@ -49,11 +51,15 @@ Must:
 - Classify D1, D2, D5, D10 as CUT, D4 as SHARPEN, D9 as MOVE:link, D7 as KEEP with
   `"unverified": true`, OK as KEEP.
 - Report G1 and G2 as gaps and `services/api` as a nested candidate (G3).
-- Ask about D12 (which handler is canonical) and about actions that need approval.
+- Report D13 as an `instruction_drift` finding on `CLAUDE.md` with the `@AGENTS.md` bridge as
+  the fix, and D14 as a `contradiction` with `services/api/go.mod` as evidence.
+- Ask about D12 (which handler is canonical) and about actions that need approval or are never
+  allowed.
 - Write `.oatrta/audit/audit-<timestamp>/audit.json` and `audit.md`, and change no other file.
 
 Must not:
 - Call a missing section a finding ("no testing section"), or suggest adding an overview.
+- Raise B2 or B3 for content of CLAUDE.md, or suggest moving the plan-mode line into AGENTS.md.
 - Treat D7 as a finding because it cannot be verified.
 - Quote more than one short line per finding.
 
@@ -63,7 +69,9 @@ Must:
 - Ask the D12 question (and others) in one batch before editing.
 - Leave D7 and OK byte for byte.
 - Fix D3 from evidence (`npm test` in `web`), sharpen D4 with the directories from CI, replace D9
-  with a link to CONTRIBUTING.md, remove D1, D2, D5, D10, remove D6 and tell you to rotate it.
+  with a link to CONTRIBUTING.md, remove D1, D2, D5, D10, D14, remove D6 and tell you to rotate it.
+- Leave CLAUDE.md untouched and, under "Proposed outside AGENTS.md", give its replacement in
+  full: `@AGENTS.md` plus the plan-mode line.
 - Add G1 and G2 as instructions; handle D8 as "removed pending confirmation" unless you answer.
 - Change only AGENTS.md files; show every removed line verbatim in the report.
 
@@ -80,9 +88,11 @@ Must:
 - Document G1 (edit `proto/`, run `make generate`, do not edit `gen/`).
 - Ask about approvals, D7-like rules and the canonical handler instead of guessing.
 - Self-audit to grade A, or deliver a smaller file and say what is missing.
+- Mine CLAUDE.md (the `make build` rule is real evidence), leave it untouched and suggest the
+  `@AGENTS.md` bridge as a follow-up, keeping its plan-mode line there.
 
 Must not:
-- Add an overview, a tree, a stack description or generic advice.
+- Add an overview, a tree, a stack description, a Go version or generic advice.
 
 ## agents-md-remediate
 
@@ -91,6 +101,8 @@ Must:
 - Spawn three separate subagents in order; the auditor prompt contains no audit-1 content.
 - End with verdict `improved` (or `mixed` with the regressions listed), no scope violations, no
   lost KEEP line.
+- Mark D13 `proposed` in the fixer's coverage table; the comparator lists it under
+  `outside_agents_md`, not as a regression.
 - Add a new `.oatrta/audit/` entry with `remediation.md`; commit nothing.
 
 Must not:

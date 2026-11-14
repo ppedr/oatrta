@@ -29,7 +29,7 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True  # no __pycache__ next to installed skills
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from scan_agents_md import OTHER_INSTRUCTION_FILES, rel, walk  # noqa: E402
+from scan_agents_md import other_instruction_files, rel, walk  # noqa: E402
 
 # Everything oatrta writes in a target repo lives under OATRTA_ROOT/<skill>/, and the whole
 # OATRTA_ROOT is kept out of git locally through .git/info/exclude (see ensure_excluded).
@@ -44,7 +44,7 @@ CATEGORIES = {
     "secret", "stale_command", "stale_path", "contradiction", "generic_advice", "discoverable_fact",
     "directory_listing", "overview_prose", "duplicated_doc", "empty_heading", "vague_rule", "missing_cwd",
     "undocumented_tooling", "missing_boundary", "missing_validation", "misplaced_scope",
-    "tooling_enforceable", "other",
+    "tooling_enforceable", "instruction_drift", "other",
 }
 
 
@@ -67,9 +67,7 @@ def instruction_files(root: Path) -> list[str]:
             continue
         if "AGENTS.md" in filenames:
             found.add(rel(root, d / "AGENTS.md"))
-    for name in OTHER_INSTRUCTION_FILES:
-        if (root / name).is_file():
-            found.add(name)
+    found.update(p for p in other_instruction_files(root) if OATRTA_ROOT not in Path(p).parts)
     return sorted(found)
 
 

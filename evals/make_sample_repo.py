@@ -45,6 +45,7 @@ This project is a monorepo built with Go and React. We use TypeScript for the we
 - Follow existing patterns for new HTTP handlers.
 {KEEP_LINE}
 - Go code in `services/api` must be built with `make build`, not `go build`, because the target sets the `integration` build tag.
+- `services/api` targets Go 1.21.
 - Deploy token: {FAKE_TOKEN}
 
 ## Commits
@@ -55,8 +56,19 @@ This project is a monorepo built with Go and React. We use TypeScript for the we
 ## Security
 """
 
+# D13: copies AGENTS.md lines instead of importing it. Only lines a correct refactor keeps or links,
+# so it never masks a lost KEEP line in keep-check and never contradicts the fixed AGENTS.md.
+CLAUDE_MD = """# CLAUDE.md
+
+- Go code in `services/api` must be built with `make build`, not `go build`, because the target sets the `integration` build tag.
+- Use Conventional Commits: `feat:`, `fix:`, `chore:`.
+- Keep the subject under 72 characters.
+- Use plan mode before editing more than three files.
+"""
+
 FILES = {
     "README.md": "# orders\n\nOrders service and web client.\n",
+    "CLAUDE.md": CLAUDE_MD,
     "CONTRIBUTING.md": """# Contributing
 
 ## Commits

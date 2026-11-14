@@ -161,6 +161,8 @@ Then read `comparison.json` and give, in this order:
 2. Blockers resolved and remaining.
 3. Regressions, if any: lost KEEP lines, out-of-scope changes, findings the fix introduced.
 4. Files changed, and where the diff is (`RUN_DIR/evidence/diff.patch`).
+   Then `outside_agents_md`: changes proposed for other agents' instruction files, which this
+   skill never makes. Offer to apply them only if the user asks.
 5. Next step:
    - `improved`: review the diff, then commit. Nothing is committed by this skill.
    - `mixed`: review the listed regressions; offer another round.

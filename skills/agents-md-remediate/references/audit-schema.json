@@ -133,7 +133,7 @@
         "generic_advice", "discoverable_fact", "directory_listing", "overview_prose",
         "duplicated_doc", "empty_heading", "vague_rule",
         "missing_cwd", "undocumented_tooling", "missing_boundary", "missing_validation",
-        "misplaced_scope", "tooling_enforceable", "other"
+        "misplaced_scope", "tooling_enforceable", "instruction_drift", "other"
       ]
     }
   }

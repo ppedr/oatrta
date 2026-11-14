@@ -26,7 +26,7 @@ non-obvious to say there.
 | Layout | Only what names do not reveal: which package owns a feature, which code is shared, where the real entry point is | A tree listing, a tour of every folder |
 | Commands | Exact command plus where to run it: "From `services/api`, run `make test-unit`" | "Run the tests" |
 | Tooling choices | The non-obvious choice and why: "Use `make build`, not `go build`; the target injects required flags" | Restating the default tool of the language |
-| Boundaries | Generated paths and the source to edit instead; dependency direction between layers; public API and compatibility rules; actions that need human approval | "Be careful with the architecture" |
+| Boundaries | Generated paths and the source to edit instead; dependency direction between layers; public API and compatibility rules; actions that need human approval, kept apart from actions that are never allowed (section 12.2) | "Be careful with the architecture" |
 | Definition of done | What to run while iterating, what to run before finishing, how validation scales with the size of the change | "Make sure everything passes" |
 | Conventions | Project-specific, concrete, with the canonical file to copy: "New handlers follow `internal/http/orders_handler.go`" | "Follow existing patterns" |
 
@@ -35,7 +35,8 @@ dependency direction, or delete it.
 
 ## 3. What does not belong
 
-- Facts visible in manifests or the source tree (language, framework, where tests live).
+- Facts visible in manifests or the source tree (language, framework, where tests live, a
+  toolchain version the manifest pins; section 12.3).
 - Generic engineering advice ("write clean code", "follow best practices", "add tests").
 - Directory listings copied from the repository.
 - Broad repository overviews. They do not help an agent find the relevant code faster.
@@ -94,7 +95,7 @@ reason for every N/A.
 | D | Definition of done | 15 | Distinguishes fast checks for iteration from the full check before finishing, and says how validation scales with scope |
 | E | Concrete conventions | 10 | Project-specific conventions name canonical files or paths. No "follow existing patterns" |
 | F | Accuracy | 15 | Every referenced path exists, every command resolves to a real script or target, nothing contradicts CI or the manifests |
-| G | Topology and enforcement | 10 | File placement matches real boundaries, root and nested content are split correctly, no conflicting instructions, duplicated docs replaced by links, rules that tooling can enforce point to the tooling |
+| G | Topology and enforcement | 10 | File placement matches real boundaries, root and nested content are split correctly, no conflicting instructions, duplicated docs replaced by links, other agents' instruction files point to AGENTS.md instead of copying it (section 12.1), rules that tooling can enforce point to the tooling |
 
 Scoring bands inside a dimension: 100% (meets the bar), 70% (minor gaps), 40% (present but vague
 or partial), 0% (absent although the repo clearly needs it, or mostly wrong).
@@ -140,3 +141,90 @@ Every instruction (a bullet, a sentence, a command block) gets exactly one verdi
 - Root file above roughly 150 lines: suspect overview prose, duplicated docs or content that
   belongs in nested files. Length alone is never a finding; the content that caused it is.
 - Nested file that only repeats the root: delete it.
+
+## 11. Finding categories
+
+Every finding has one category. It is the first part of the finding's `key`.
+
+| Category | Dimension | Use for |
+|---|---|---|
+| `secret` | A (blocker B1) | Credential, token, key or private operational detail |
+| `stale_command` | F (blocker B2) | Command that does not resolve in the stated directory |
+| `stale_path` | F (blocker B3) | Instruction that depends on a path that does not exist |
+| `contradiction` | F or G (blocker B4 when two instruction files or CI conflict) | The file disagrees with another instruction file, CI or a manifest |
+| `generic_advice` | A | Advice that applies to any repository |
+| `discoverable_fact` | A | Fact an agent reads in seconds from a manifest or the tree |
+| `directory_listing` | A | Tree or folder list copied from the repository |
+| `overview_prose` | A | Description of the project instead of instructions |
+| `empty_heading` | A | Heading with nothing under it |
+| `vague_rule` | A or E | Rule that names no file, path, command or direction |
+| `missing_cwd` | B | Command without its working directory in a multi-project repo |
+| `undocumented_tooling` | B | Wrapper target or non-obvious tool choice the file omits or contradicts |
+| `missing_boundary` | C | Generated, vendored or restricted path, or layer rule, with no instruction |
+| `missing_validation` | D | CI gate or pre-finish check the file never mentions |
+| `duplicated_doc` | G | Copy of README, CONTRIBUTING or another doc inside AGENTS.md |
+| `misplaced_scope` | G | Area rule at the root, or repository rule in a nested file |
+| `tooling_enforceable` | G | Rule a formatter, linter or CI check could enforce |
+| `instruction_drift` | G | Another agent's instruction file copies AGENTS.md or diverges from it instead of pointing to it (section 12.1) |
+| `other` | any | None of the above; say why in the summary |
+
+## 12. Criteria from other sources (local rules, not from the source above)
+
+These come from two further posts, restated as criteria: "One AGENTS.md to rule them all",
+https://plgah.medium.com/one-agents-md-to-rule-them-all-70e6dc87a05f, and "How to write a great
+agents.md: lessons from over 2,500 repositories", GitHub Blog,
+https://github.blog/ai-and-ml/github-copilot/how-to-write-a-great-agents-md-lessons-from-over-2500-repositories/.
+Neither publishes a method or measurements. They extend sections 1 to 9; where they seem to
+disagree with the AAIF source, the source wins.
+
+### 12.1 Other agents' instruction files
+
+- AGENTS.md is the single source. CLAUDE.md, GEMINI.md, `.github/copilot-instructions.md`,
+  `.github/agents/*.md`, Cursor rules and similar files reach it by import, link or symlink, and
+  add only what concerns that one tool.
+- The bridge, per file:
+  - CLAUDE.md and GEMINI.md: a line `@AGENTS.md` (`@../AGENTS.md` and so on from a subfolder),
+    then the tool's own additions.
+  - `.github/copilot-instructions.md`, `.github/agents/*.md`: a one-line pointer to AGENTS.md.
+    A custom agent keeps its persona and tool settings and drops the copied commands and rules.
+  - Symlink: works, but a checkout without symlink support (the default on Windows) writes a
+    one-line text file holding the target path, and the agent reads only that line. Prefer the
+    import or the pointer when anyone on the team uses Windows.
+  - Tools change how they discover these files. Ask the user to confirm with the agents they use.
+- Content that only one tool understands (its slash commands, settings, MCP servers configured
+  for it) belongs in that tool's file, not in AGENTS.md.
+- A file that copies AGENTS.md lines, or holds rules for the same code without pointing to
+  AGENTS.md, is an `instruction_drift` finding on that file. Its fix is in that file: reduce it to
+  the bridge plus tool-specific additions. The skills propose that change and make it only on
+  request.
+- A rule in that file that conflicts with AGENTS.md for the same code is also blocker B4.
+- Blockers B2 and B3 are judged on AGENTS.md files. A stale command or path in another tool's
+  file is part of its `instruction_drift` finding. A secret is B1 in any file.
+
+### 12.2 Boundaries: ask first versus never
+
+- Keep actions the agent may take after asking apart from actions it must never take. The
+  agent behaves differently (stop and ask, or refuse), so a file that mixes them loses
+  information.
+- Often missing, and only a maintainer can state them: deleting, skipping or weakening a failing
+  test to make the suite pass; editing CI configuration; touching deploy or production
+  configuration; git actions (commit, push, open a pull request, force-push, rewrite history,
+  bypass hooks with `--no-verify`). Ask; never invent these rules.
+- A commit format enforced by commitlint or a hook is MOVE:tooling. One documented in
+  CONTRIBUTING is MOVE:link.
+- Do not ask for an "always do" list. It tends to fill up with generic advice.
+
+### 12.3 Toolchain versions
+
+- A version that a manifest pins (`go` line in `go.mod`, `engines` in `package.json`, `.nvmrc`,
+  `.python-version`, `rust-toolchain.toml`, a Gradle toolchain) is discoverable: CUT.
+- Write a version only when nothing in the repository pins it, or when the version to use
+  differs from the one the tools would pick.
+- A version in AGENTS.md that contradicts the manifest is a `contradiction` finding in
+  dimension F.
+
+### 12.4 Code examples and order
+
+- A pointer to the canonical file (section 2) beats an inline snippet, which drifts from the code.
+  A short snippet is fine when no file shows the pattern on its own and no linter enforces it.
+- Put commands near the top; agents come back to them most. Order alone is never a finding.

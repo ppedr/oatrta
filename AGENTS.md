@@ -19,7 +19,8 @@
 - Rubric points, blockers, verdict names and finding categories are defined in
   `shared/guide.md` and repeated in `shared/audit-schema.json`, `shared/run_tools.py`
   (`DIMENSION_MAX`, `VERDICTS`, `CATEGORIES`), every SKILL.md and
-  `skills/agents-md-audit/references/report-template.md`. Rename in all of them together.
+  `skills/agents-md-audit/references/report-template.md`; finding categories appear only in the
+  first three. Rename in all of them together.
 - Everything the skills write in a target repo goes under `.oatrta/<skill>/` (`audit`,
   `remediate`). The paths are constants at the top of `shared/run_tools.py`; skills get them from
   its subcommands and never build them by hand. Every subcommand that creates something under

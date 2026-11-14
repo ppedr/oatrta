@@ -97,9 +97,17 @@ gate, generated paths). Add only what passes the one test. Do not add gaps that 
 
 ### 6. Other instruction files
 
-If CLAUDE.md, Copilot instructions, Cursor rules or similar duplicate or contradict AGENTS.md,
-do not edit them by default. Report the overlap and propose one source of truth (AGENTS.md) with
-the other files reduced to a pointer or to tool-specific additions. Apply only on request.
+If CLAUDE.md, GEMINI.md, Copilot instructions or custom agents, Cursor rules or similar
+duplicate or contradict AGENTS.md (`instruction_drift`), do not edit them by default. Report the
+overlap and, for each file, propose the bridge from guide section 12.1 written out in full: the
+`@AGENTS.md` import or the pointer line, followed by the tool-specific lines worth keeping.
+Recommend the import over a symlink when the team uses Windows. Apply only on request.
+
+Before deleting a rule from AGENTS.md, check whether another tool's file copies it. If one does,
+say in the report that the copy is now stale and that the bridge removes it.
+
+Tool-specific content found in AGENTS.md (one agent's commands or settings) is not cut: move it
+to the proposal for that tool's file.
 
 ### 7. Verify
 
@@ -134,7 +142,7 @@ Score <before> → <after> (<grade> → <grade>). Lines <before> → <after>.
 <maintainer-knowledge lines kept as is>
 
 ## Proposed outside AGENTS.md
-<tooling rules to add, other instruction files to consolidate>
+<tooling rules to add; for each other instruction file, the bridge text to replace it with>
 
 ## Open questions
 ```
