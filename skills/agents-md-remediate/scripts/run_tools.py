@@ -31,10 +31,11 @@ sys.dont_write_bytecode = True  # no __pycache__ next to installed skills
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from scan_agents_md import OTHER_INSTRUCTION_FILES, rel, walk  # noqa: E402
 
-# Everything oatrta writes in a target repo lives under OATRTA_ROOT/<skill>/.
+# Everything oatrta writes in a target repo lives under OATRTA_ROOT/<skill>/, and the whole
+# OATRTA_ROOT is kept out of git locally through .git/info/exclude (see ensure_excluded).
 OATRTA_ROOT = ".oatrta"
-AUDIT_ROOT = f"{OATRTA_ROOT}/audit"          # committed: audit history
-REMEDIATE_ROOT = f"{OATRTA_ROOT}/remediate"  # git-ignored locally: run evidence
+AUDIT_ROOT = f"{OATRTA_ROOT}/audit"          # audit history
+REMEDIATE_ROOT = f"{OATRTA_ROOT}/remediate"  # run evidence
 AUDIT_PREFIX = "audit-"
 RUN_PREFIX = "run-"
 DIMENSION_MAX = {"A": 20, "B": 15, "C": 15, "D": 15, "E": 10, "F": 15, "G": 10}
@@ -104,7 +105,7 @@ def git_dirty(root: Path) -> dict[str, str | None] | None:
             i += 1
             if src:
                 dirty[src] = None
-        if path.startswith(REMEDIATE_ROOT + "/"):
+        if path.startswith(OATRTA_ROOT + "/"):
             continue
         p = root / path
         dirty[path] = sha256(p) if p.is_file() else None
@@ -235,6 +236,25 @@ def cmd_stale(audit_path: str, root: Path) -> int:
     return 1 if stale else 0
 
 
+def ensure_excluded(root: Path) -> str | None:
+    """Keep all of .oatrta/ out of git, locally, through .git/info/exclude. Returns a note if changed."""
+    git_dir = (git(root, "rev-parse", "--git-dir") or "").strip()
+    if not git_dir:
+        return None
+    excl = Path(git_dir) / "info" / "exclude" if Path(git_dir).is_absolute() else root / git_dir / "info" / "exclude"
+    lines = (excl.read_text(encoding="utf-8") if excl.is_file() else "").splitlines()
+    wanted = f"/{OATRTA_ROOT}/"
+    narrower = [l for l in lines if l.startswith(wanted) and l != wanted]  # e.g. /.oatrta/remediate/
+    if wanted in lines and not narrower:
+        return None
+    lines = [l for l in lines if l not in narrower]
+    if wanted not in lines:
+        lines.append(wanted)
+    excl.parent.mkdir(parents=True, exist_ok=True)
+    excl.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return f"{rel(root, excl)} ignores {wanted}"
+
+
 def cmd_init(root: Path) -> int:
     run_id = RUN_PREFIX + dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     run_dir = root / REMEDIATE_ROOT / run_id
@@ -245,21 +265,7 @@ def cmd_init(root: Path) -> int:
         dst = run_dir / "before" / p
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(root / p, dst)
-    # Fix the ignore rules first, so the baseline sees the same files that later checks see.
-    exclude_note = None
-    git_dir = (git(root, "rev-parse", "--git-dir") or "").strip()
-    if git_dir:
-        excl = (root / git_dir / "info" / "exclude") if not Path(git_dir).is_absolute() else Path(git_dir) / "info" / "exclude"
-        excl.parent.mkdir(parents=True, exist_ok=True)
-        lines = (excl.read_text(encoding="utf-8") if excl.is_file() else "").splitlines()
-        wanted = f"/{REMEDIATE_ROOT}/"
-        legacy = f"/{OATRTA_ROOT}/"  # older versions ignored the whole folder, hiding audit history
-        if legacy in lines or wanted not in lines:
-            lines = [l for l in lines if l != legacy]
-            if wanted not in lines:
-                lines.append(wanted)
-            excl.write_text("\n".join(lines) + "\n", encoding="utf-8")
-            exclude_note = f"{rel(root, excl)} ignores {wanted}"
+    exclude_note = ensure_excluded(root)  # before the baseline, so later checks see the same files
     head = (git(root, "rev-parse", "HEAD") or "").strip() or None
     dirty = git_dirty(root)
     baseline = {
@@ -290,7 +296,7 @@ def cmd_scope(root: Path, run_dir: Path) -> int:
     for p in before:
         if p not in now:
             changed.add(p)  # was dirty, now back to HEAD
-    changed = sorted(c for c in changed if not c.startswith(REMEDIATE_ROOT + "/"))
+    changed = sorted(c for c in changed if not c.startswith(OATRTA_ROOT + "/"))
     allowed = [c for c in changed if Path(c).name == "AGENTS.md"]
     violations = [c for c in changed if Path(c).name != "AGENTS.md"]
     result = {"checked": True, "changed": changed, "allowed": allowed, "violations": violations}
@@ -381,8 +387,10 @@ def new_audit_dir(root: Path) -> Path:
 
 
 def cmd_audit_dir(root: Path) -> int:
+    note = ensure_excluded(root)
     d = new_audit_dir(root)
-    out({"audit_dir": str(d), "audit_json": str(d / "audit.json"), "audit_md": str(d / "audit.md")})
+    out({"audit_dir": str(d), "audit_json": str(d / "audit.json"), "audit_md": str(d / "audit.md"),
+         "note": note})
     return 0
 
 
@@ -406,6 +414,7 @@ def cmd_publish(root: Path, run_dir: Path) -> int:
     if not (run_dir / "audit-2.json").is_file():
         print(f"no audit-2.json in {run_dir}", file=sys.stderr)
         return 2
+    ensure_excluded(root)
     d = new_audit_dir(root)
     copied = []
     for s, t in src.items():

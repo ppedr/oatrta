@@ -21,7 +21,9 @@
   `skills/agents-md-audit/references/report-template.md`. Rename in all of them together.
 - Everything the skills write in a target repo goes under `.oatrta/<skill>/` (`audit`,
   `remediate`). The paths are constants at the top of `shared/run_tools.py`; skills get them from
-  its subcommands and never build them by hand.
+  its subcommands and never build them by hand. Every subcommand that creates something under
+  `.oatrta/` calls `ensure_excluded`, which keeps the whole folder out of git through
+  `.git/info/exclude`.
 - Changing a field in `shared/audit-schema.json` means updating `cmd_validate` in
   `shared/run_tools.py` and the briefs in `skills/agents-md-remediate/references/`.
 

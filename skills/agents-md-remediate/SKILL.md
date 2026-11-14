@@ -19,12 +19,11 @@ audit-1.json ──▶ [fixer] ──▶ AGENTS.md edits + fix-report.md
 audit-1 + audit-2 ──▶ [comparator] ──▶ comparison.json + comparison.md
 ```
 
-Everything oatrta writes in a repository lives under `.oatrta/<skill>/`:
+Everything oatrta writes in a repository lives under `.oatrta/<skill>/`. The whole `.oatrta/`
+folder is kept out of git locally through `.git/info/exclude`, so none of it is committed.
 
-- `.oatrta/audit/audit-<timestamp>/`: audit history, committed. Read from here, add to it
-  with `publish`.
-- `.oatrta/remediate/run-<timestamp>/`: one folder per run, git-ignored locally through
-  `.git/info/exclude`:
+- `.oatrta/audit/audit-<timestamp>/`: audit history. Read from here, add to it with `publish`.
+- `.oatrta/remediate/run-<timestamp>/`: one folder per run:
 
 ```
 baseline.json        git state and hashes before the run
@@ -171,7 +170,7 @@ Then read `comparison.json` and give, in this order:
      `python SKILL_DIR/scripts/run_tools.py restore <repo> RUN_DIR`. After a restore the
      input audit describes the files again; do not publish. If the user keeps the changes,
      publish as above.
-6. The new `.oatrta/audit/` entry, to commit together with the AGENTS.md changes.
+6. The path of the new `.oatrta/audit/` entry.
 
 ### Rounds
 

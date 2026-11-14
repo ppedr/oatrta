@@ -143,13 +143,14 @@ two files there:
 If a caller passes explicit output paths (the remediate auditor does), write there instead and
 do not create a folder under `.oatrta/audit/`.
 
-The folder is meant to be committed. Do not delete or edit earlier entries; each audit is a new
-folder.
+`audit-dir` also keeps the whole `.oatrta/` folder out of git, locally, through
+`.git/info/exclude`: the history stays on disk and is never committed by accident. Do not
+delete or edit earlier entries; each audit is a new folder.
 
 Rules for the JSON:
 
 - `repo_root` is `"."`; every path in the file is relative to the repository root. No absolute
-  paths, since the file is committed.
+  paths; the file may be shared or committed by the user later.
 - Fill `files` from `python <skill-dir>/scripts/run_tools.py hashes <repo-root>`. The hashes let
   consumers detect that AGENTS.md changed after the audit.
 - `git_head` from `git rev-parse HEAD`, or null outside git.
@@ -159,8 +160,7 @@ Rules for the JSON:
   lines moved; comparisons depend on it.
 - `dispositions` covers every instruction, KEEP included, with line ranges in the file as it is
   now. Mark maintainer knowledge you kept without verifying as `"unverified": true`.
-- Never put a secret value in either file. They are committed; a leaked value would land in
-  git history.
+- Never put a secret value in either file. They outlive the session and may be shared.
 
 Validate before finishing, and fix until it exits 0:
 
