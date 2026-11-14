@@ -131,6 +131,20 @@ The scanner and `run_tools.py` require Python 3. `agents-md-remediate` needs an 
 can spawn subagents (Claude Code, Copilot CLI, VS Code Copilot with `runSubagent` enabled) and
 works best in a git repository.
 
+## Checking the skills
+
+`scripts/smoke_test.py` (run in CI on Linux and Windows) covers the scripts. The skill
+workflows themselves need a model, so they are checked by hand on a generated sample repository
+with planted defects:
+
+```
+python evals/make_sample_repo.py <empty dir>
+# run a skill there, then:
+python evals/check_sample.py <dir> --stage audit
+```
+
+`evals/expected.md` lists every planted defect and what each skill must and must not do with it.
+
 ## Scanner
 
 ```

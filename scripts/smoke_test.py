@@ -241,6 +241,25 @@ class RemediationRun(unittest.TestCase):
             self.assertNotIn("/.oatrta/remediate/", lines)
 
 
+@unittest.skipUnless(HAS_GIT, "git not installed")
+class Evals(unittest.TestCase):
+    """Keeps evals/ honest: the sample still contains its planted defects and the checker still bites."""
+
+    def test_sample_repo(self) -> None:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+            sample = Path(tmp).resolve() / "sample"
+            r = subprocess.run([sys.executable, str(ROOT / "evals" / "make_sample_repo.py"), str(sample)],
+                               capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            code, scan = run(SCAN, str(sample))
+            self.assertEqual(scan["blocker_hints"], {"B1_secret": 1, "B2_stale_command": 1, "B3_stale_path": 1})
+            self.assertIn("services/api", scan["nested_candidates"])
+            r = subprocess.run([sys.executable, str(ROOT / "evals" / "check_sample.py"), str(sample),
+                                "--stage", "refactor"], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 1, "an untouched sample must fail the refactor checks")
+            self.assertIn("FAIL  D6 token removed", r.stdout)
+
+
 class Repo(unittest.TestCase):
     def test_sync_check(self) -> None:
         r = subprocess.run([sys.executable, str(ROOT / "scripts" / "sync_shared.py"), "--check"],

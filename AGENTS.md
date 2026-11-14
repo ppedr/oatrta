@@ -31,7 +31,7 @@
 ## Versioning
 - Installed copies only update when `version` changes, so a change that ships to users needs a
   bump: anything under `skills/` or `shared/`, or `.claude-plugin/`. README, this file,
-  `scripts/`, `.github/`, `.gitignore` and `.gitattributes` do not: they change nothing an
+  `scripts/`, `evals/`, `.github/`, `.gitignore` and `.gitattributes` do not: they change nothing an
   installed skill does.
 - The version lives only in `.claude-plugin/plugin.json`; bump it there, in the same commit as
   the change. Do not add `version` to `marketplace.json`: Claude Code prefers `plugin.json`
@@ -50,3 +50,11 @@
   You can only run it on your own OS: `.github/workflows/ci.yml` runs it on Linux and Windows,
   Python 3.10 and 3.13, so check CI before calling a change to `shared/*.py` done.
 - `python shared/scan_agents_md.py . --format md` reports no blocker hints for this repo.
+- Changed a SKILL.md or anything in `skills/*/references/`: before releasing, run the changed
+  skill by hand on a fresh sample repo and judge the result against `evals/expected.md`:
+  1. `python evals/make_sample_repo.py <empty dir>` (add `--without-agents-md` for create).
+  2. Run the skill there in Claude Code or Copilot CLI, with the local plugin installed.
+  3. `python evals/check_sample.py <dir> --stage <audit|refactor|create|remediate>` must pass.
+  4. Read the output against the skill's section in `evals/expected.md`.
+  CI cannot do this; it needs a model. If you change a planted defect, update
+  `evals/make_sample_repo.py` and `evals/expected.md` together.
