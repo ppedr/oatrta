@@ -132,15 +132,16 @@ Every audit is recorded in the repository, so there is a history to compare and 
 python <skill-dir>/scripts/run_tools.py audit-dir <repo-root>
 ```
 
-It creates `.audit/oatrta/audit-<UTC timestamp>/` (for example
-`.audit/oatrta/audit-20261114T025000Z/`) and prints the paths. Other tools may also write
-under `.audit/`; this skill only ever writes inside `.audit/oatrta/`. Write two files there:
+It creates `.oatrta/audit/audit-<UTC timestamp>/` (for example
+`.oatrta/audit/audit-20261114T025000Z/`) and prints the paths. Everything oatrta writes in a
+repository lives under `.oatrta/<skill>/`; this skill writes only in `.oatrta/audit/`. Write
+two files there:
 
 - `audit.json`, following `references/audit-schema.json`.
 - `audit.md`, the report from step 7.
 
 If a caller passes explicit output paths (the remediate auditor does), write there instead and
-do not create a folder under `.audit/`.
+do not create a folder under `.oatrta/audit/`.
 
 The folder is meant to be committed. Do not delete or edit earlier entries; each audit is a new
 folder.

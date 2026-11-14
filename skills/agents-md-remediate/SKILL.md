@@ -19,8 +19,12 @@ audit-1.json ──▶ [fixer] ──▶ AGENTS.md edits + fix-report.md
 audit-1 + audit-2 ──▶ [comparator] ──▶ comparison.json + comparison.md
 ```
 
-Everything for a run lives in `<repo>/.oatrta/runs/<run-id>/` (git-ignored locally through
-`.git/info/exclude`):
+Everything oatrta writes in a repository lives under `.oatrta/<skill>/`:
+
+- `.oatrta/audit/audit-<timestamp>/`: audit history, committed. Read from here, add to it
+  with `publish`.
+- `.oatrta/remediate/run-<timestamp>/`: one folder per run, git-ignored locally through
+  `.git/info/exclude`:
 
 ```
 baseline.json        git state and hashes before the run
@@ -63,9 +67,9 @@ Offer to run `agents-md-refactor` and `agents-md-audit` as two separate sessions
 ### 1. Locate and check the audit
 
 The input is an `audit.json` written by `agents-md-audit`. Audits live in the repository history
-under `.audit/oatrta/audit-<timestamp>/`. Resolve the input in this order:
+under `.oatrta/audit/audit-<timestamp>/`. Resolve the input in this order:
 
-1. A path from the user: an `audit.json`, or a `.audit/oatrta/audit-<timestamp>/` folder (use its
+1. A path from the user: an `audit.json`, or a `.oatrta/audit/audit-<timestamp>/` folder (use its
    `audit.json`).
 2. Otherwise the newest entry: `python SKILL_DIR/scripts/run_tools.py latest-audit <repo>`.
 
@@ -148,7 +152,7 @@ First record the result in the audit history, unless the verdict is `regressed` 
 python SKILL_DIR/scripts/run_tools.py publish <repo> RUN_DIR
 ```
 
-It creates a new `.audit/oatrta/audit-<timestamp>/` with the re-audit as `audit.json` and `audit.md`, and
+It creates a new `.oatrta/audit/audit-<timestamp>/` with the re-audit as `audit.json` and `audit.md`, and
 the comparison as `remediation.md`. That entry describes the files as they are now, so the next
 run starts from it.
 
@@ -167,7 +171,7 @@ Then read `comparison.json` and give, in this order:
      `python SKILL_DIR/scripts/run_tools.py restore <repo> RUN_DIR`. After a restore the
      input audit describes the files again; do not publish. If the user keeps the changes,
      publish as above.
-6. The new `.audit/oatrta/` entry, to commit together with the AGENTS.md changes.
+6. The new `.oatrta/audit/` entry, to commit together with the AGENTS.md changes.
 
 ### Rounds
 
@@ -178,8 +182,8 @@ previous `audit-2.json` as the new `audit-1.json` and repeat steps 2 to 7. Stop 
 ## Rules
 
 - Never commit, stash, reset or check out. The user reviews and commits.
-- Never edit or delete existing entries in `.audit/oatrta/`; only `publish` adds new ones.
-  Never touch other folders under `.audit/`; they belong to other tools.
+- Never edit or delete existing entries in `.oatrta/audit/`; only `publish` adds new ones.
+- Write only under `.oatrta/remediate/` (the run) and, through `publish`, `.oatrta/audit/`.
 - Never edit AGENTS.md from the orchestrator, even to fix a small leftover. Leftovers go to the
   next round.
 - Never pass audit-1, fix-report or the diff to the auditor.

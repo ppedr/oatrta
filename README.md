@@ -28,16 +28,26 @@ with a fresh context:
 
 ## Audit history
 
-Every audit is written to `<repo>/.audit/oatrta/audit-<UTC timestamp>/` as `audit.json` (format:
+Everything oatrta writes in a repository lives under `.oatrta/<skill>/`:
+
+```
+.oatrta/
+  audit/
+    audit-20261114T025000Z/      audit.json, audit.md          committed
+    audit-20261114T031200Z/      audit.json, audit.md, remediation.md
+  remediate/
+    run-20261114T030500Z/        snapshot, both audits, diff, reports   git-ignored
+```
+
+Every audit is written to `.oatrta/audit/audit-<UTC timestamp>/` as `audit.json` (format:
 `shared/audit-schema.json`) and `audit.md`. The folder is meant to be committed, so the repo
 keeps a history of how its AGENTS.md files scored over time. Entries are never edited; each
-audit adds a folder. `.audit/` can be shared with other tools; oatrta only writes inside
-`.audit/oatrta/`.
+audit adds a folder.
 
 `agents-md-remediate` uses the newest entry by default, or the one you name:
 
 ```
-run agents-md-remediate with .audit/oatrta/audit-20261114T025000Z
+run agents-md-remediate with .oatrta/audit/audit-20261114T025000Z
 ```
 
 After a run that is not reverted, it adds a new entry with the re-audit and a
@@ -45,8 +55,8 @@ After a run that is not reverted, it adds a new entry with the re-audit and a
 
 ## Run evidence
 
-Each remediation run keeps its working evidence in `<repo>/.oatrta/runs/<run-id>/` (snapshot, both audits, diff,
-reports), git-ignored through `.git/info/exclude`. Nothing is committed; a regressed run can be
+Each remediation run keeps its working evidence in `.oatrta/remediate/run-<UTC timestamp>/`
+(snapshot, both audits, diff, reports), git-ignored locally through `.git/info/exclude`. Nothing is committed; a regressed run can be
 restored from the snapshot.
 
 ## Principle

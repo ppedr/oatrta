@@ -5,14 +5,14 @@ Subcommands:
     hashes     <repo>                     instruction files with line count and sha256 (JSON)
     validate   <audit.json>               structural and arithmetic check of an audit file
     stale      <audit.json> <repo>        exit 1 if instruction files changed since the audit
-    init       <repo>                     create .oatrta/runs/<id>/, snapshot instruction files, write baseline
+    init       <repo>                     create .oatrta/remediate/run-<timestamp>/, snapshot, write baseline
     scope      <repo> <run_dir>           files changed since the baseline; non-AGENTS.md changes are violations
     diff       <repo> <run_dir>           unified diff of instruction files, snapshot vs now
     keep-check <audit.json> <repo> <run_dir>  KEEP lines from the audit that no longer exist anywhere
     restore    <repo> <run_dir>           put snapshot back and remove AGENTS.md files created by the run
-    audit-dir  <repo>                     create .audit/oatrta/audit-<timestamp>/ and print it
-    latest-audit <repo>                   newest .audit/oatrta/audit-*/audit.json (exit 1 if none)
-    publish    <repo> <run_dir>           record a run's re-audit and comparison as a new .audit/oatrta/ entry
+    audit-dir  <repo>                     create .oatrta/audit/audit-<timestamp>/ and print it
+    latest-audit <repo>                   newest .oatrta/audit/audit-*/audit.json (exit 1 if none)
+    publish    <repo> <run_dir>           record a run's re-audit and comparison as a new .oatrta/audit/ entry
 
 Exit codes: 0 ok, 1 check failed, 2 usage or input error.
 """
@@ -31,9 +31,12 @@ sys.dont_write_bytecode = True  # no __pycache__ next to installed skills
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from scan_agents_md import OTHER_INSTRUCTION_FILES, rel, walk  # noqa: E402
 
-RUN_ROOT = ".oatrta"
-AUDIT_ROOT = ".audit/oatrta"  # .audit/ may be shared with other tools; this pack owns only oatrta/
+# Everything oatrta writes in a target repo lives under OATRTA_ROOT/<skill>/.
+OATRTA_ROOT = ".oatrta"
+AUDIT_ROOT = f"{OATRTA_ROOT}/audit"          # committed: audit history
+REMEDIATE_ROOT = f"{OATRTA_ROOT}/remediate"  # git-ignored locally: run evidence
 AUDIT_PREFIX = "audit-"
+RUN_PREFIX = "run-"
 DIMENSION_MAX = {"A": 20, "B": 15, "C": 15, "D": 15, "E": 10, "F": 15, "G": 10}
 VERDICTS = {"KEEP", "SHARPEN", "FIX", "MOVE:nested", "MOVE:root", "MOVE:link", "MOVE:tooling", "CUT", "REDACT"}
 CATEGORIES = {
@@ -59,7 +62,7 @@ def sha256(p: Path) -> str:
 def instruction_files(root: Path) -> list[str]:
     found = set()
     for d, _, filenames in walk(root):
-        if RUN_ROOT in d.relative_to(root).parts:
+        if OATRTA_ROOT in d.relative_to(root).parts:
             continue
         if "AGENTS.md" in filenames:
             found.add(rel(root, d / "AGENTS.md"))
@@ -101,7 +104,7 @@ def git_dirty(root: Path) -> dict[str, str | None] | None:
             i += 1
             if src:
                 dirty[src] = None
-        if path.startswith(RUN_ROOT + "/"):
+        if path.startswith(REMEDIATE_ROOT + "/"):
             continue
         p = root / path
         dirty[path] = sha256(p) if p.is_file() else None
@@ -233,8 +236,8 @@ def cmd_stale(audit_path: str, root: Path) -> int:
 
 
 def cmd_init(root: Path) -> int:
-    run_id = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    run_dir = root / RUN_ROOT / "runs" / run_id
+    run_id = RUN_PREFIX + dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    run_dir = root / REMEDIATE_ROOT / run_id
     (run_dir / "before").mkdir(parents=True, exist_ok=False)
     (run_dir / "evidence").mkdir()
     files = instruction_files(root)
@@ -242,17 +245,23 @@ def cmd_init(root: Path) -> int:
         dst = run_dir / "before" / p
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(root / p, dst)
-    head = (git(root, "rev-parse", "HEAD") or "").strip() or None
-    dirty = git_dirty(root)
+    # Fix the ignore rules first, so the baseline sees the same files that later checks see.
     exclude_note = None
     git_dir = (git(root, "rev-parse", "--git-dir") or "").strip()
     if git_dir:
         excl = (root / git_dir / "info" / "exclude") if not Path(git_dir).is_absolute() else Path(git_dir) / "info" / "exclude"
         excl.parent.mkdir(parents=True, exist_ok=True)
-        text = excl.read_text(encoding="utf-8") if excl.is_file() else ""
-        if f"/{RUN_ROOT}/" not in text.splitlines():
-            excl.write_text(text + ("" if text.endswith("\n") or not text else "\n") + f"/{RUN_ROOT}/\n", encoding="utf-8")
-            exclude_note = f"added /{RUN_ROOT}/ to {rel(root, excl)}"
+        lines = (excl.read_text(encoding="utf-8") if excl.is_file() else "").splitlines()
+        wanted = f"/{REMEDIATE_ROOT}/"
+        legacy = f"/{OATRTA_ROOT}/"  # older versions ignored the whole folder, hiding audit history
+        if legacy in lines or wanted not in lines:
+            lines = [l for l in lines if l != legacy]
+            if wanted not in lines:
+                lines.append(wanted)
+            excl.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            exclude_note = f"{rel(root, excl)} ignores {wanted}"
+    head = (git(root, "rev-parse", "HEAD") or "").strip() or None
+    dirty = git_dirty(root)
     baseline = {
         "run_id": run_id, "created_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         "repo_root": str(root), "git": dirty is not None, "git_head": head,
@@ -281,7 +290,7 @@ def cmd_scope(root: Path, run_dir: Path) -> int:
     for p in before:
         if p not in now:
             changed.add(p)  # was dirty, now back to HEAD
-    changed = sorted(c for c in changed if not c.startswith(RUN_ROOT + "/"))
+    changed = sorted(c for c in changed if not c.startswith(REMEDIATE_ROOT + "/"))
     allowed = [c for c in changed if Path(c).name == "AGENTS.md"]
     violations = [c for c in changed if Path(c).name != "AGENTS.md"]
     result = {"checked": True, "changed": changed, "allowed": allowed, "violations": violations}
