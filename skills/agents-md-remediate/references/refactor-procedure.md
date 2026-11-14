@@ -19,7 +19,8 @@ A refactor is successful when the file is **shorter or equal in noise, higher in
    encode experience (approval rules, warnings about a fragile subsystem) stay, word for word,
    unless they are provably stale.
 3. **Nothing disappears silently.** Every cut or moved line appears in the change report with its
-   original text.
+   original text, quoted in full. That includes code blocks and directory trees: never
+   summarize them.
 4. **No secrets survive, none get echoed.** REDACT lines are removed, reported by line and type
    only, with a note that the credential must be rotated.
 5. **Instruction files only.** Do not change linter configs, CI or code. Tooling changes are

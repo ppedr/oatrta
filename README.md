@@ -134,14 +134,18 @@ works best in a git repository.
 ## Checking the skills
 
 `scripts/smoke_test.py` (run in CI on Linux and Windows) covers the scripts. The skill
-workflows themselves need a model, so they are checked by hand on a generated sample repository
-with planted defects:
+workflows need a model, so they run on a generated sample repository with planted defects:
 
 ```
-python evals/make_sample_repo.py <empty dir>
-# run a skill there, then:
-python evals/check_sample.py <dir> --stage audit
+python evals/run_eval.py                     # all four skills, in parallel
+python evals/run_eval.py --stages audit      # one of them
 ```
+
+For each skill it makes a fresh sample, runs the skill in headless Claude Code with this checkout
+as the plugin, answers the maintainer questions, runs `evals/check_sample.py`, and has a second
+session judge the result against `evals/expected.md`. Results go to
+`<temp>/oatrta-evals/<timestamp>/report.md`. It needs the `claude` CLI, logged in, and costs
+model usage.
 
 `evals/expected.md` lists every planted defect and what each skill must and must not do with it.
 

@@ -1,15 +1,25 @@
 # Expected results on the sample repository
 
-Check a skill workflow by hand after changing its SKILL.md or its `references/`:
+Check a skill workflow after changing its SKILL.md or its `references/`:
+
+```
+python evals/run_eval.py --stages <audit,refactor,create,remediate>
+```
+
+It makes a fresh sample per skill, runs the skill headless with the answers in
+`MAINTAINER_ANSWERS`, runs `check_sample.py` (what code can check), and has a judge session
+grade the run against the section below (`judgment.md`). Read `report.md` and every judgment
+before trusting a pass: the judge is a model too.
+
+By hand, in Claude Code or Copilot CLI:
 
 ```
 python evals/make_sample_repo.py <empty dir>     # add --without-agents-md for agents-md-create
-# open <empty dir> in Claude Code or Copilot CLI with oatrta installed, run the skill
+# open <empty dir> with the local plugin (claude --plugin-dir <this repo>), run the skill
 python evals/check_sample.py <empty dir> --stage <audit|refactor|create|remediate>
 ```
 
-`check_sample.py` covers what code can check. Then read the skill's output against this file:
-it is the part only a person can judge. Use a fresh sample repo for every run.
+Use a fresh sample repo for every run.
 
 ## What the sample repository contains
 

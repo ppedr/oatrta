@@ -51,11 +51,9 @@
   You can only run it on your own OS: `.github/workflows/ci.yml` runs it on Linux and Windows,
   Python 3.10 and 3.13, so check CI before calling a change to `shared/*.py` done.
 - `python shared/scan_agents_md.py . --format md` reports no blocker hints for this repo.
-- Changed a SKILL.md or anything in `skills/*/references/`: before releasing, run the changed
-  skill by hand on a fresh sample repo and judge the result against `evals/expected.md`:
-  1. `python evals/make_sample_repo.py <empty dir>` (add `--without-agents-md` for create).
-  2. Run the skill there in Claude Code or Copilot CLI, with the local plugin installed.
-  3. `python evals/check_sample.py <dir> --stage <audit|refactor|create|remediate>` must pass.
-  4. Read the output against the skill's section in `evals/expected.md`.
-  CI cannot do this; it needs a model. If you change a planted defect, update
-  `evals/make_sample_repo.py` and `evals/expected.md` together.
+- Changed a SKILL.md or anything in `skills/*/references/` (`shared/guide.md` reaches all four
+  skills): before releasing, run `python evals/run_eval.py --stages <changed skills>`. Every
+  stage in its `report.md` must show OK, and read each `judgment.md`; the judge is a model too.
+  CI cannot do this; it needs a model and costs usage. If you change a planted defect, update
+  `evals/make_sample_repo.py` and `evals/expected.md` together; if you change what the skills
+  ask the maintainer, check `MAINTAINER_ANSWERS` in `evals/run_eval.py`.

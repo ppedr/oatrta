@@ -301,6 +301,32 @@ class Evals(unittest.TestCase):
             self.assertIn("FAIL  D6 token removed", r.stdout)
 
 
+@unittest.skipUnless(HAS_GIT, "git not installed")
+class EvalRunner(unittest.TestCase):
+    """evals/run_eval.py needs a model to run; this covers the parts that do not."""
+
+    def test_cli_and_stage_detection(self) -> None:
+        r = subprocess.run([sys.executable, str(ROOT / "evals" / "run_eval.py"), "--stages", "nope"],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("unknown stage", r.stderr)
+        sys.path.insert(0, str(ROOT / "evals"))
+        import run_eval  # noqa: E402
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+            sample = Path(tmp).resolve() / "sample"
+            subprocess.run([sys.executable, str(ROOT / "evals" / "make_sample_repo.py"), str(sample)],
+                           check=True, capture_output=True)
+            for stage in run_eval.STAGES:
+                self.assertEqual(run_eval.stage_done(stage, sample), stage == "create", stage)
+            write(sample / "AGENTS.md", "# AGENTS.md\n")
+            self.assertTrue(run_eval.stage_done("refactor", sample))
+            write(sample / "web" / "NEW.md", "new\n")
+            run_eval.write_diff(sample, Path(tmp) / "diff.patch")
+            patch = (Path(tmp) / "diff.patch").read_text(encoding="utf-8")
+            self.assertIn("-## Overview", patch)
+            self.assertIn("=== new file: web/NEW.md ===", patch)
+
+
 class Repo(unittest.TestCase):
     def test_sync_check(self) -> None:
         r = subprocess.run([sys.executable, str(ROOT / "scripts" / "sync_shared.py"), "--check"],
