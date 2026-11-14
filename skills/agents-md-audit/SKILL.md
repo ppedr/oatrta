@@ -121,18 +121,34 @@ Use `references/report-template.md`. Rules:
 - Remind the user once that a score is a proxy: the real test is running the agents they use on
   representative tasks with and without the file.
 
-Default to a chat report. Write files only in file output mode (step 8).
+In chat, give the verdict and the top findings, and point to the files from step 8 for the rest.
 
-### 8. File output mode
+### 8. Write the audit files
 
-Use it when the user asks for a file, or when a caller (`agents-md-refactor`,
-`agents-md-remediate`) passes output paths. Write two files:
+Every audit is recorded in the repository, so there is a history to compare and to hand to
+`agents-md-remediate`. Create the folder:
+
+```
+python <skill-dir>/scripts/run_tools.py audit-dir <repo-root>
+```
+
+It creates `.audit/oatrta/audit-<UTC timestamp>/` (for example
+`.audit/oatrta/audit-20261114T025000Z/`) and prints the paths. Other tools may also write
+under `.audit/`; this skill only ever writes inside `.audit/oatrta/`. Write two files there:
 
 - `audit.json`, following `references/audit-schema.json`.
 - `audit.md`, the report from step 7.
 
+If a caller passes explicit output paths (the remediate auditor does), write there instead and
+do not create a folder under `.audit/`.
+
+The folder is meant to be committed. Do not delete or edit earlier entries; each audit is a new
+folder.
+
 Rules for the JSON:
 
+- `repo_root` is `"."`; every path in the file is relative to the repository root. No absolute
+  paths, since the file is committed.
 - Fill `files` from `python <skill-dir>/scripts/run_tools.py hashes <repo-root>`. The hashes let
   consumers detect that AGENTS.md changed after the audit.
 - `git_head` from `git rev-parse HEAD`, or null outside git.
@@ -142,10 +158,13 @@ Rules for the JSON:
   lines moved; comparisons depend on it.
 - `dispositions` covers every instruction, KEEP included, with line ranges in the file as it is
   now. Mark maintainer knowledge you kept without verifying as `"unverified": true`.
-- Never put a secret value in either file.
+- Never put a secret value in either file. They are committed; a leaked value would land in
+  git history.
 
 Validate before finishing, and fix until it exits 0:
 
 ```
-python <skill-dir>/scripts/run_tools.py validate audit.json
+python <skill-dir>/scripts/run_tools.py validate <audit-dir>/audit.json
 ```
+
+End the chat reply with the path of the folder, so the user can pass it to `agents-md-remediate`.

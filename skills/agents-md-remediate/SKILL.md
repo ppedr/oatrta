@@ -62,10 +62,18 @@ Offer to run `agents-md-refactor` and `agents-md-audit` as two separate sessions
 
 ### 1. Locate and check the audit
 
-The input is an `audit.json` written by `agents-md-audit` (path from the user, or the newest
-`.oatrta/runs/*/audit-2.json` or `audit*.json` in the repo). A chat-only audit report cannot be
-consumed reliably; in that case, or if there is no audit, run the auditor subagent first (step 4
-prompt, writing to the run directory as `audit-1.json`) and use its output.
+The input is an `audit.json` written by `agents-md-audit`. Audits live in the repository history
+under `.audit/oatrta/audit-<timestamp>/`. Resolve the input in this order:
+
+1. A path from the user: an `audit.json`, or a `.audit/oatrta/audit-<timestamp>/` folder (use its
+   `audit.json`).
+2. Otherwise the newest entry: `python SKILL_DIR/scripts/run_tools.py latest-audit <repo>`.
+
+A chat-only audit report cannot be consumed reliably. If there is no audit file, or the one
+found fails the checks below, create a fresh one first: run
+`python SKILL_DIR/scripts/run_tools.py audit-dir <repo>` and spawn the auditor subagent (step 5
+prompt) with `OUT_JSON` and `OUT_MD` set to the paths it prints. That audit becomes the input
+and is already part of the history.
 
 ```
 python SKILL_DIR/scripts/run_tools.py validate <audit.json>
@@ -134,7 +142,17 @@ When it returns, check that `comparison.json` and `comparison.md` exist.
 
 ### 7. Report to the user
 
-Read `comparison.json` and give, in this order:
+First record the result in the audit history, unless the verdict is `regressed` (see below):
+
+```
+python SKILL_DIR/scripts/run_tools.py publish <repo> RUN_DIR
+```
+
+It creates a new `.audit/oatrta/audit-<timestamp>/` with the re-audit as `audit.json` and `audit.md`, and
+the comparison as `remediation.md`. That entry describes the files as they are now, so the next
+run starts from it.
+
+Then read `comparison.json` and give, in this order:
 
 1. Verdict (`improved`, `mixed`, `no_change`, `regressed`) and score before → after.
 2. Blockers resolved and remaining.
@@ -146,7 +164,10 @@ Read `comparison.json` and give, in this order:
    - `no_change`: the score moved within audit noise; say what blocked progress (usually
      unanswered maintainer questions).
    - `regressed`: offer to restore. Restore only after the user agrees:
-     `python SKILL_DIR/scripts/run_tools.py restore <repo> RUN_DIR`
+     `python SKILL_DIR/scripts/run_tools.py restore <repo> RUN_DIR`. After a restore the
+     input audit describes the files again; do not publish. If the user keeps the changes,
+     publish as above.
+6. The new `.audit/oatrta/` entry, to commit together with the AGENTS.md changes.
 
 ### Rounds
 
@@ -157,6 +178,8 @@ previous `audit-2.json` as the new `audit-1.json` and repeat steps 2 to 7. Stop 
 ## Rules
 
 - Never commit, stash, reset or check out. The user reviews and commits.
+- Never edit or delete existing entries in `.audit/oatrta/`; only `publish` adds new ones.
+  Never touch other folders under `.audit/`; they belong to other tools.
 - Never edit AGENTS.md from the orchestrator, even to fix a small leftover. Leftovers go to the
   next round.
 - Never pass audit-1, fix-report or the diff to the auditor.

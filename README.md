@@ -26,7 +26,26 @@ with a fresh context:
    and that the fixer's report matches the actual diff. Verdict: `improved`, `mixed`,
    `no_change` or `regressed`.
 
-Each run keeps its evidence in `<repo>/.oatrta/runs/<run-id>/` (snapshot, both audits, diff,
+## Audit history
+
+Every audit is written to `<repo>/.audit/oatrta/audit-<UTC timestamp>/` as `audit.json` (format:
+`shared/audit-schema.json`) and `audit.md`. The folder is meant to be committed, so the repo
+keeps a history of how its AGENTS.md files scored over time. Entries are never edited; each
+audit adds a folder. `.audit/` can be shared with other tools; oatrta only writes inside
+`.audit/oatrta/`.
+
+`agents-md-remediate` uses the newest entry by default, or the one you name:
+
+```
+run agents-md-remediate with .audit/oatrta/audit-20261114T025000Z
+```
+
+After a run that is not reverted, it adds a new entry with the re-audit and a
+`remediation.md` explaining what changed, so the newest entry always describes the current files.
+
+## Run evidence
+
+Each remediation run keeps its working evidence in `<repo>/.oatrta/runs/<run-id>/` (snapshot, both audits, diff,
 reports), git-ignored through `.git/info/exclude`. Nothing is committed; a regressed run can be
 restored from the snapshot.
 

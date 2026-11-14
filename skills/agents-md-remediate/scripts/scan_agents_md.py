@@ -23,7 +23,7 @@ SKIP_DIRS = {
     ".git", ".hg", ".svn", "node_modules", "vendor", "target", "build", "dist", "out",
     ".venv", "venv", "__pycache__", ".idea", ".vscode", ".gradle", ".next", ".nuxt",
     ".tox", ".mypy_cache", ".pytest_cache", "coverage", ".terraform", "bin", "obj",
-    ".oatrta",
+    ".oatrta", ".audit",
 }
 
 MANIFESTS = {

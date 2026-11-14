@@ -10,6 +10,9 @@ Subcommands:
     diff       <repo> <run_dir>           unified diff of instruction files, snapshot vs now
     keep-check <audit.json> <repo> <run_dir>  KEEP lines from the audit that no longer exist anywhere
     restore    <repo> <run_dir>           put snapshot back and remove AGENTS.md files created by the run
+    audit-dir  <repo>                     create .audit/oatrta/audit-<timestamp>/ and print it
+    latest-audit <repo>                   newest .audit/oatrta/audit-*/audit.json (exit 1 if none)
+    publish    <repo> <run_dir>           record a run's re-audit and comparison as a new .audit/oatrta/ entry
 
 Exit codes: 0 ok, 1 check failed, 2 usage or input error.
 """
@@ -24,10 +27,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # no __pycache__ next to installed skills
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from scan_agents_md import OTHER_INSTRUCTION_FILES, rel, walk  # noqa: E402
 
 RUN_ROOT = ".oatrta"
+AUDIT_ROOT = ".audit/oatrta"  # .audit/ may be shared with other tools; this pack owns only oatrta/
+AUDIT_PREFIX = "audit-"
 DIMENSION_MAX = {"A": 20, "B": 15, "C": 15, "D": 15, "E": 10, "F": 15, "G": 10}
 VERDICTS = {"KEEP", "SHARPEN", "FIX", "MOVE:nested", "MOVE:root", "MOVE:link", "MOVE:tooling", "CUT", "REDACT"}
 CATEGORIES = {
@@ -355,6 +361,52 @@ def cmd_restore(root: Path, run_dir: Path) -> int:
     return 1 if failed else 0
 
 
+def new_audit_dir(root: Path) -> Path:
+    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    base = root / AUDIT_ROOT
+    d, n = base / f"{AUDIT_PREFIX}{stamp}", 2
+    while d.exists():
+        d, n = base / f"{AUDIT_PREFIX}{stamp}-{n}", n + 1
+    d.mkdir(parents=True)
+    return d
+
+
+def cmd_audit_dir(root: Path) -> int:
+    d = new_audit_dir(root)
+    out({"audit_dir": str(d), "audit_json": str(d / "audit.json"), "audit_md": str(d / "audit.md")})
+    return 0
+
+
+def cmd_latest_audit(root: Path) -> int:
+    base = root / AUDIT_ROOT
+    entries = sorted((p for p in base.iterdir()
+                      if p.name.startswith(AUDIT_PREFIX) and (p / "audit.json").is_file()),
+                     key=lambda p: p.name) if base.is_dir() else []
+    if not entries:
+        out({"audit_json": None, "history": 0})
+        return 1
+    last = entries[-1]
+    md = last / "audit.md"
+    out({"audit_json": str(last / "audit.json"), "audit_md": str(md) if md.is_file() else None,
+         "history": len(entries)})
+    return 0
+
+
+def cmd_publish(root: Path, run_dir: Path) -> int:
+    src = {"audit-2.json": "audit.json", "audit-2.md": "audit.md", "comparison.md": "remediation.md"}
+    if not (run_dir / "audit-2.json").is_file():
+        print(f"no audit-2.json in {run_dir}", file=sys.stderr)
+        return 2
+    d = new_audit_dir(root)
+    copied = []
+    for s, t in src.items():
+        if (run_dir / s).is_file():
+            shutil.copy2(run_dir / s, d / t)
+            copied.append(t)
+    out({"audit_dir": str(d), "files": copied})
+    return 0
+
+
 def main(argv: list[str]) -> int:
     if not argv or argv[0] in ("-h", "--help"):
         print(__doc__)
@@ -369,6 +421,9 @@ def main(argv: list[str]) -> int:
         "diff": (2, lambda: cmd_diff(Path(args[0]).resolve(), Path(args[1]).resolve())),
         "keep-check": (3, lambda: cmd_keep_check(args[0], Path(args[1]).resolve(), Path(args[2]).resolve())),
         "restore": (2, lambda: cmd_restore(Path(args[0]).resolve(), Path(args[1]).resolve())),
+        "audit-dir": (1, lambda: cmd_audit_dir(Path(args[0]).resolve())),
+        "latest-audit": (1, lambda: cmd_latest_audit(Path(args[0]).resolve())),
+        "publish": (2, lambda: cmd_publish(Path(args[0]).resolve(), Path(args[1]).resolve())),
     }
     if cmd not in spec or len(args) != spec[cmd][0]:
         print(__doc__, file=sys.stderr)
