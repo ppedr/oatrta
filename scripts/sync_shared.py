@@ -4,6 +4,7 @@
     python scripts/sync_shared.py          # write copies
     python scripts/sync_shared.py --check  # exit 1 if any copy drifted (use in CI)
 """
+import json
 import sys
 from pathlib import Path
 
@@ -31,8 +32,21 @@ EXTRA = {
 }
 
 
+def version_mismatch() -> str | None:
+    plugin = json.loads((ROOT / ".claude-plugin/plugin.json").read_text(encoding="utf-8"))
+    market = json.loads((ROOT / ".claude-plugin/marketplace.json").read_text(encoding="utf-8"))
+    listed = [p.get("version") for p in market.get("plugins", []) if p.get("name") == plugin.get("name")]
+    if listed != [plugin.get("version")]:
+        return f"version mismatch: plugin.json {plugin.get('version')}, marketplace.json {listed}"
+    return None
+
+
 def main() -> int:
     check = "--check" in sys.argv[1:]
+    mismatch = version_mismatch()
+    if mismatch:
+        print(mismatch)
+        return 1
     drift = []
     for skill in sorted(p for p in (ROOT / "skills").iterdir() if (p / "SKILL.md").is_file()):
         for src_rel, dst_rel in {**COMMON, **EXTRA.get(skill.name, {})}.items():

@@ -27,6 +27,18 @@
 - Changing a field in `shared/audit-schema.json` means updating `cmd_validate` in
   `shared/run_tools.py` and the briefs in `skills/agents-md-remediate/references/`.
 
+## Versioning
+- Installed copies only update when `version` changes, so a change that ships to users needs a
+  bump: anything under `skills/` or `shared/`, or `.claude-plugin/`. README, this file,
+  `scripts/`, `.gitignore` and `.gitattributes` do not.
+- Set the same value in `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`, in
+  the same commit as the change.
+- Bump once per change set: if `git diff origin/main -- .claude-plugin/` already shows a bump,
+  do not bump again.
+- Until 1.0: minor (`0.4.1` → `0.5.0`) for a new skill, a new `run_tools.py` subcommand, a
+  change to `shared/audit-schema.json`, or a changed path under `.oatrta/`; patch (`0.4.1` →
+  `0.4.2`) for anything else, such as wording or a bug fix.
+
 ## Done means
-- `python scripts/sync_shared.py --check` exits 0.
+- `python scripts/sync_shared.py --check` exits 0 (copies in sync, both versions equal).
 - `python shared/scan_agents_md.py . --format md` reports no blocker hints for this repo.
