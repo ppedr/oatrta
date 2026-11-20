@@ -23,6 +23,10 @@ the verdict vocabulary. Do not score from memory.
 - **A gap needs proof.** Report a missing instruction only when the repository shows a trap an
   agent would fall into (a Makefile target wrapping the raw command, a generated directory, a CI
   check with no local equivalent documented). "Could add a section about X" is not a finding.
+  Name the missing instruction itself (the command, path or rule and its evidence), never the
+  section it would go in: write "CI runs `make lint` in `services/api`; the file never says so",
+  not "No Done means section". The section names of guide section 13 are for writing files,
+  not for auditing them.
 - **Unknown is not wrong.** Instructions that encode maintainer knowledge you cannot verify
   ("never touch the billing migration without approval") are KEEP, flagged as unverified.
 
