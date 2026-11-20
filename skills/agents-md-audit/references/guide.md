@@ -17,7 +17,8 @@ For every instruction ask: **would an agent act differently because it read this
 
 AGENTS.md is plain Markdown. There are no mandatory sections and no schema. A 15-line file can be
 excellent. Never reward length, never punish a missing section when the repository has nothing
-non-obvious to say there.
+non-obvious to say there. Files these skills write still use one fixed section order (section 13)
+so that they look the same in every repository.
 
 ## 2. What belongs in the file
 
@@ -229,3 +230,33 @@ disagree with the AAIF source, the source wins.
 - A pointer to the canonical file (section 2) beats an inline snippet, which drifts from the code.
   A short snippet is fine when no file shows the pattern on its own and no linter enforces it.
 - Put commands near the top; agents come back to them most. Order alone is never a finding.
+  Files these skills write follow the fixed order of section 13, which puts commands second.
+
+## 13. Sections, order and language (local rule, for files these skills write)
+
+Every AGENTS.md that `agents-md-create`, `agents-md-refactor` or `agents-md-remediate` writes,
+root or nested, uses only these level-2 headings, spelled exactly like this, in this order. So a
+file has the same shape in every repository.
+
+| # | Heading | Holds (guide section 2 category) |
+|---|---|---|
+| 1 | `## Layout` | Layout: ownership, shared code, the real entry point |
+| 2 | `## Commands` | Commands and tooling choices: install, build, test, lint, run, with working directory |
+| 3 | `## Rules` | Conventions with their canonical file, dependency direction between layers |
+| 4 | `## Generated and restricted files` | Boundaries: generated paths and the source to edit, paths not to edit, compatibility rules, actions that need approval |
+| 5 | `## Done means` | Definition of done: iteration checks, the full check, how it scales |
+| 6 | `## More` | Pointers to other docs, one line each |
+
+- The first line is `# AGENTS.md` in the root and `# AGENTS.md (<dir>)` in a nested file.
+- Leave out a section with nothing to say; never add an empty one to complete the set. The
+  sections that remain keep this relative order.
+- No other level-2 headings. An instruction that seems to fit nowhere goes in the section of its
+  category in guide section 2; a group the author wants to keep becomes a `###` heading inside
+  that section.
+- Headings are always the English ones above, whatever the language of the content, so the
+  scanner can check them (`section_order` in its output).
+- The content under the headings is written in the language the user asks for. If they name
+  none: in a refactor or remediation, the language the existing file is written in; in a new
+  file, the language the user writes to you in. Commands, paths and code stay as they are.
+- Order is not a quality criterion: the audit does not score it and does not report it as a
+  finding.

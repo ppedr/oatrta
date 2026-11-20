@@ -111,6 +111,9 @@ PATH_EXTENSIONS = (
     ".properties", ".tf", ".xsl", ".xslt", ".xq", ".cfg", ".ini", ".lock", ".txt", ".html", ".css",
 )
 
+# Level-2 headings of a written AGENTS.md, in this order (shared/guide.md section 13).
+SECTION_ORDER = ("Layout", "Commands", "Rules", "Generated and restricted files", "Done means", "More")
+
 FENCE_RE = re.compile(r"^\s*(```|~~~)")
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.*\S)\s*$")
 INLINE_CODE_RE = re.compile(r"`([^`\n]+)`")
@@ -301,6 +304,22 @@ def check_path(token: str, file_dir: Path, root: Path) -> str | None:
     return "missing" if credible else None
 
 
+def section_order(headings: list[tuple[int, str, int]]) -> dict:
+    """Level-2 headings that are not canonical, or that come after a later canonical one or repeat it."""
+    noncanonical, out_of_order, highest = [], [], -1
+    for level, title, ln in headings:
+        if level != 2:
+            continue
+        if title not in SECTION_ORDER:
+            noncanonical.append({"line": ln, "heading": title})
+            continue
+        idx = SECTION_ORDER.index(title)
+        if idx <= highest:
+            out_of_order.append({"line": ln, "heading": title})
+        highest = max(highest, idx)
+    return {"ok": not noncanonical and not out_of_order, "noncanonical": noncanonical, "out_of_order": out_of_order}
+
+
 def analyze_file(path: Path, root: Path) -> dict:
     text = read_text(path)
     lines = text.splitlines()
@@ -393,6 +412,7 @@ def analyze_file(path: Path, root: Path) -> dict:
         "approx_tokens": len(text) // 4,
         "headings": [{"level": l, "title": t, "line": n} for l, t, n in headings],
         "empty_headings": empty_headings,
+        "section_order": section_order(headings),
         "generic_phrases": generic,
         "overview_prose": overview,
         "tree_listing_lines": tree_lines if len(tree_lines) >= 4 else [],
@@ -538,6 +558,12 @@ def to_markdown(r: dict) -> str:
                 out += [f"- L{x['line']}: " + json.dumps({k: v for k, v in x.items() if k != 'line'}, ensure_ascii=False)
                         for x in f[key]]
                 out.append("")
+        order = f["section_order"]
+        if not order["ok"]:
+            out.append("**Section order** (written files use: " + ", ".join(SECTION_ORDER) + ")")
+            out += [f"- L{x['line']}: not a canonical section: {x['heading']}" for x in order["noncanonical"]]
+            out += [f"- L{x['line']}: out of order or repeated: {x['heading']}" for x in order["out_of_order"]]
+            out.append("")
         if f["tree_listing_lines"]:
             out += [f"**Directory listing** at lines {f['tree_listing_lines'][0]} to {f['tree_listing_lines'][-1]}", ""]
         no_cwd = [c for c in f["commands"] if not c["has_cwd_hint"]]

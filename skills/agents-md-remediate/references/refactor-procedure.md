@@ -73,7 +73,7 @@ Proceed directly when the user already asked for the refactor to be applied.
 
 | Verdict | What to do |
 |---|---|
-| KEEP | Do not touch, not even wording or formatting |
+| KEEP | Do not touch, not even wording or formatting. Moving the line unchanged into its canonical section (step 5) is allowed |
 | SHARPEN | Replace the vague rule with the exact file, path, command or dependency direction. Keep the author's intent and tone. One instruction in, one instruction out |
 | FIX | Correct the command or path from evidence (CI config beats README). If the right value is ambiguous and nobody answered, remove the line and report it under "Removed pending confirmation" |
 | MOVE:nested | Move to the AGENTS.md of the area it governs. Create that file only on a real boundary (guide section 5) and only if it ends up with content that passes the one test |
@@ -86,10 +86,17 @@ Proceed directly when the user already asked for the refactor to be applied.
 Then add **evidence-backed gaps** from the audit (missing working directories, undocumented CI
 gate, generated paths). Add only what passes the one test. Do not add gaps that are guesses.
 
-### 5. Restructure lightly
+### 5. Restructure into the canonical sections
 
-- Commands with working directories first or near the top; boundaries and definition of done
-  easy to find. Keep the author's section names when they work.
+- Every file you write, root or nested, uses the English headings and order of guide section
+  13, the same in every repository. Put each surviving instruction in the section of its guide
+  category, keeping its text; rename or merge the author's `##` sections into those. An author
+  group worth keeping becomes a `###` inside its section. Drop sections left empty.
+- Do this even when no line changes: a file that only needs its sections reordered still gets
+  them reordered.
+- Content language (guide section 13): the one the user asked for, else the one the file is
+  already written in. Switching language translates the content you write; KEEP lines stay as
+  written.
 - Commands in code blocks or inline code, copy-paste exact.
 - Bullets over paragraphs. One instruction per bullet.
 - State the reason when it prevents a wrong workaround ("the target injects build tags").
@@ -113,7 +120,7 @@ to the proposal for that tool's file.
 ### 7. Verify
 
 - Rerun the scanner. Zero unresolved commands, zero missing paths, zero secrets, zero empty
-  headings.
+  headings, and `section_order.ok` true for every AGENTS.md.
 - Re-score with the rubric. Record the **after** score. If it did not improve, or a blocker
   remains, say why.
 - Reread each changed file once as an agent with no context: is anything now ambiguous that was
@@ -124,10 +131,14 @@ to the proposal for that tool's file.
 ```markdown
 # AGENTS.md refactor: <repo>
 
-Score <before> → <after> (<grade> → <grade>). Lines <before> → <after>.
+Score <before> → <after> (<grade> → <grade>). Lines <before> → <after>. Content language: <language>.
 
 ## Changed files
 | File | Lines | Summary |
+
+## Sections
+| File | Original heading | Now under |
+| AGENTS.md | `## Testing` | `## Done means` |
 
 ## Sharpened and fixed
 - `AGENTS.md:22` "Run the tests." → "From `services/api`, run `make test-unit`."

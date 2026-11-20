@@ -17,7 +17,9 @@ the verdict vocabulary. Do not score from memory.
 - **Evidence over opinion.** Every finding cites a file and line in AGENTS.md plus the repository
   fact that proves it (a manifest, a CI workflow, a missing path). No finding without both.
 - **Judge behavior change, not form.** Short is fine. Missing sections are fine when the repo has
-  nothing non-obvious to say. Never recommend adding content to look complete.
+  nothing non-obvious to say. Never recommend adding content to look complete. Section order and
+  heading names (the scanner's `section_order`, guide section 13) are not scored and are not
+  findings; a refactor applies them.
 - **A gap needs proof.** Report a missing instruction only when the repository shows a trap an
   agent would fall into (a Makefile target wrapping the raw command, a generated directory, a CI
   check with no local equivalent documented). "Could add a section about X" is not a finding.

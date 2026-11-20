@@ -109,6 +109,10 @@ first) and ask them in one batch now. Write `RUN_DIR/answers.md` as numbered que
 answer pairs. Unanswered or unattended: write `unanswered` for each; the fixer then applies only
 evidence-backed changes.
 
+Decide the content language of the fixed files now (guide section 13): the one the user asked
+for, else the one the root AGENTS.md is written in. Make the first line of `answers.md`
+`Language: <language>`, for example `Language: pt-br`.
+
 ### 4. Phase 1: fixer
 
 Prompt:

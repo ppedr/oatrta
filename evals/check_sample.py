@@ -20,6 +20,7 @@ sys.path.insert(0, str(ROOT / "evals"))
 from make_sample_repo import CLAUDE_MD, FAKE_TOKEN, KEEP_LINE  # noqa: E402
 
 TOOLS = ROOT / "skills" / "agents-md-remediate" / "scripts" / "run_tools.py"
+SCAN = ROOT / "skills" / "agents-md-remediate" / "scripts" / "scan_agents_md.py"
 STAGES = ("audit", "refactor", "create", "remediate")
 
 
@@ -42,8 +43,8 @@ class Checker:
         return subprocess.run(["git", "-C", str(self.repo), *args], capture_output=True, text=True,
                               check=True).stdout
 
-    def tools(self, *args: str) -> tuple[int, dict]:
-        r = subprocess.run([sys.executable, "-I", str(TOOLS), *args], capture_output=True, text=True,
+    def tools(self, *args: str, script: Path = TOOLS) -> tuple[int, dict]:
+        r = subprocess.run([sys.executable, "-I", str(script), *args], capture_output=True, text=True,
                            encoding="utf-8")
         try:
             return r.returncode, json.loads(r.stdout)
@@ -90,6 +91,11 @@ class Checker:
         bad = [c for c in changed if Path(c).name != "AGENTS.md"]
         self.check(not bad, f"only AGENTS.md files changed {bad or ''}")
 
+    def section_order(self) -> None:
+        code, r = self.tools(str(self.repo), script=SCAN)
+        bad = [f["path"] for f in r.get("agents_md_files", []) if not f["section_order"]["ok"]]
+        self.check(code == 0 and not bad, f"every AGENTS.md uses the canonical section order {bad or ''}")
+
     def fixed_files(self) -> None:
         texts = {p: p.read_text(encoding="utf-8") for p in self.agents_files()}
         joined = "\n".join(texts.values())
@@ -104,6 +110,7 @@ class Checker:
         root = texts.get(self.repo / "AGENTS.md", "")
         self.check("## Security" not in root or root.split("## Security", 1)[1].strip() != "",
                    "D10 empty heading gone")
+        self.section_order()
 
     # ---- stages ----
 
@@ -142,6 +149,7 @@ class Checker:
                    "Go service commands documented with their directory")
         self.check("gen/" in text or "generate" in text, "G1 generated gen/ boundary documented")
         self.check("1.21" not in text and "1.22" not in text, "no Go version that go.mod already pins")
+        self.section_order()
 
     def remediate(self) -> None:
         self.only_agents_md_changed()
@@ -153,6 +161,8 @@ class Checker:
         for name in ("baseline.json", "audit-1.json", "answers.md", "fix-report.md", "audit-2.json", "comparison.json"):
             self.check((run / name).is_file(), f"run has {name}")
         report = (run / "fix-report.md").read_text(encoding="utf-8") if (run / "fix-report.md").is_file() else ""
+        answers = (run / "answers.md").read_text(encoding="utf-8") if (run / "answers.md").is_file() else ""
+        self.check(answers.startswith("Language: "), "answers.md starts with the run's content language")
         self.check(report.rstrip().splitlines()[-1:] == ["STATUS: done"], "fix-report ends with STATUS: done")
         if (run / "comparison.json").is_file():
             c = json.loads((run / "comparison.json").read_text(encoding="utf-8"))

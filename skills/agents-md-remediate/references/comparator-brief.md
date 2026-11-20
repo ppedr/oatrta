@@ -22,6 +22,7 @@ python SKILL_DIR/scripts/run_tools.py validate RUN_DIR/audit-2.json
 python SKILL_DIR/scripts/run_tools.py diff REPO RUN_DIR
 python SKILL_DIR/scripts/run_tools.py scope REPO RUN_DIR
 python SKILL_DIR/scripts/run_tools.py keep-check RUN_DIR/audit-1.json REPO RUN_DIR
+python SKILL_DIR/scripts/scan_agents_md.py REPO
 ```
 
 Non-zero exit codes from `scope` and `keep-check` are results, not errors. If an audit fails
@@ -75,7 +76,11 @@ regression. If `checked` is false, say the scope check did not run.
 ### 7. Accountability of the fix report
 
 - Every hunk in `evidence/diff.patch` is explained in `fix-report.md`.
-- Every removed line appears verbatim in the report's removed sections.
+- Every removed line appears verbatim in the report's removed sections. A removed heading may
+  instead appear in the report's Sections table, which maps it to its canonical section.
+- Every AGENTS.md written in this run follows guide section 13: `section_order.ok` is true in
+  the scan above, and the content is in the language named on the first line of `answers.md`.
+  A file that does not is a gap.
 - Every change the report claims is visible in the diff.
 - The disposition coverage table has a row for every non-KEEP disposition, finding id and gap
   key of audit-1.

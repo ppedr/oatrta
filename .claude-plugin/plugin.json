@@ -1,6 +1,6 @@
 {
   "name": "oatrta",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Audit, refactor and create AGENTS.md files following the AAIF guide 'Writing an effective AGENTS.md'.",
   "author": {
     "name": "ppedr"

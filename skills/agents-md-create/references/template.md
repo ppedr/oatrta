@@ -4,6 +4,10 @@ These are scaffolds, not forms. **Delete every section that has nothing conseque
 A finished file with two sections is fine. Lines in angle brackets are instructions to you and
 never ship.
 
+The headings and their order are fixed (guide section 13): keep the English names exactly, keep
+the order, add no other `##` heading. Deleting a section never reorders the rest. The content
+under them is written in the language the user asked for.
+
 ## Root file
 
 ```markdown
@@ -48,16 +52,21 @@ allowed. Only rules the repo proves or the maintainer gave.>
 
 ## Nested file
 
-Only area-specific content. Nothing that the root already says.
+Only area-specific content. Nothing that the root already says. Same headings, same order.
 
 ```markdown
 # AGENTS.md (services/billing)
 
+## Commands
 - Java 21, built with the Gradle wrapper in this directory: `./gradlew check`.
 - Integration tests need the local stack: `docker compose up -d` here, then
   `./gradlew integrationTest`.
-- Flyway migrations in `src/main/resources/db/migration` are append-only.
+
+## Rules
 - Money is `BigDecimal` with `MoneyUtils.round`; see `InvoiceCalculator.java`.
+
+## Generated and restricted files
+- Flyway migrations in `src/main/resources/db/migration` are append-only.
 ```
 
 ## Before you ship: delete if you see
@@ -68,6 +77,7 @@ Only area-specific content. Nothing that the root already says.
 - A directory tree
 - "clean code", "best practices", "follow existing patterns", "be careful"
 - A heading with no content
+- A `##` heading that is not one of the template's, or sections out of the template's order
 - A paragraph copied from README or CONTRIBUTING
 - A command without a working directory in a multi-project repo
 - A command you did not resolve against a real script or target

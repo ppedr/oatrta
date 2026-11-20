@@ -122,8 +122,10 @@ For every command going into the file:
 ### 7. Write
 
 Start from `references/template.md`. Delete every section with nothing consequential to say.
+The remaining sections keep the template's English headings and order (guide section 13), in
+root and nested files alike; never rename, translate, reorder or add a `##` section.
 
-- Exact commands with the working directory, near the top.
+- Exact commands with the working directory, under `## Commands`.
 - Name files and paths; no "follow existing patterns".
 - Keep "ask first" apart from "never" when the maintainer gave both.
 - No toolchain version a manifest already pins (guide section 12.3).
@@ -131,12 +133,14 @@ Start from `references/template.md`. Delete every section with nothing consequen
 - Definition of done separates quick iteration checks from the full pre-finish check and scales
   with the change.
 - Link instead of copying.
-- Write in the language the repository's docs use.
+- Write the content in the language the user asked for, else the one they write to you in
+  (guide section 13). Headings stay in English.
 
 ### 8. Self-audit
 
 Run the scanner again and score the new files with the rubric (guide section 8). Required before
-delivery: no blockers, no generic-phrase or overview hits that survive a second look, grade A.
+delivery: no blockers, `section_order.ok` true for every new file, no generic-phrase or overview
+hits that survive a second look, grade A.
 If it falls short because knowledge is missing, deliver the smaller accurate file and say what
 is missing; do not fill the gap with guesses.
 

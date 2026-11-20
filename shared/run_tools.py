@@ -29,7 +29,7 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True  # no __pycache__ next to installed skills
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from scan_agents_md import other_instruction_files, rel, walk  # noqa: E402
+from scan_agents_md import HEADING_RE, other_instruction_files, rel, walk  # noqa: E402
 
 # Everything oatrta writes in a target repo lives under OATRTA_ROOT/<skill>/, and the whole
 # OATRTA_ROOT is kept out of git locally through .git/info/exclude (see ensure_excluded).
@@ -342,7 +342,8 @@ def cmd_keep_check(audit_path: str, root: Path, run_dir: Path) -> int:
         lines = src.read_text(encoding="utf-8", errors="replace").splitlines()
         for n in range(d["start"], min(d["end"], len(lines)) + 1):
             text = norm(lines[n - 1])
-            if not text or set(text) <= set("`~-#*|: "):
+            # Headings are structure: a refactor renames and reorders them into the canonical sections.
+            if not text or set(text) <= set("`~-#*|: ") or HEADING_RE.match(text):
                 continue
             checked += 1
             if text not in corpus:

@@ -1,13 +1,5 @@
 # AGENTS.md
 
-## Generated copies
-- Do not edit files that `scripts/sync_shared.py` writes:
-  `skills/*/references/guide.md`, `skills/*/references/audit-schema.json`,
-  `skills/*/scripts/scan_agents_md.py`, `skills/*/scripts/run_tools.py` and
-  `skills/agents-md-remediate/references/*-procedure.md`,
-  `skills/agents-md-remediate/references/report-template.md`. The mapping is at the top of the
-  script. Edit the source, then run `python scripts/sync_shared.py` from the repo root.
-
 ## Rules
 - Each folder under `skills/` must work when installed alone. A SKILL.md may only reference
   files inside its own folder; anything shared reaches it through the sync script.
@@ -21,6 +13,9 @@
   (`DIMENSION_MAX`, `VERDICTS`, `CATEGORIES`), every SKILL.md and
   `skills/agents-md-audit/references/report-template.md`; finding categories appear only in the
   first three. Rename in all of them together.
+- The section headings and order for written AGENTS.md files are defined in `shared/guide.md`
+  section 13 and repeated in `SECTION_ORDER` in `shared/scan_agents_md.py` and in
+  `skills/agents-md-create/references/template.md`. Change all three together.
 - Everything the skills write in a target repo goes under `.oatrta/<skill>/` (`audit`,
   `remediate`). The paths are constants at the top of `shared/run_tools.py`; skills get them from
   its subcommands and never build them by hand. Every subcommand that creates something under
@@ -29,7 +24,7 @@
 - Changing a field in `shared/audit-schema.json` means updating `cmd_validate` in
   `shared/run_tools.py` and the briefs in `skills/agents-md-remediate/references/`.
 
-## Versioning
+### Versioning
 - Installed copies only update when `version` changes, so a change that ships to users needs a
   bump: anything under `skills/` or `shared/`, or `.claude-plugin/`. README, this file,
   `scripts/`, `evals/`, `.github/`, `.gitignore` and `.gitattributes` do not: they change nothing an
@@ -43,6 +38,14 @@
   change to `shared/audit-schema.json`, or a changed path under `.oatrta/<skill>/`; patch (`0.4.1` →
   `0.4.2`) for anything else, such as wording or a bug fix.
 
+## Generated and restricted files
+- Do not edit files that `scripts/sync_shared.py` writes:
+  `skills/*/references/guide.md`, `skills/*/references/audit-schema.json`,
+  `skills/*/scripts/scan_agents_md.py`, `skills/*/scripts/run_tools.py` and
+  `skills/agents-md-remediate/references/*-procedure.md`,
+  `skills/agents-md-remediate/references/report-template.md`. The mapping is at the top of the
+  script. Edit the source, then run `python scripts/sync_shared.py` from the repo root.
+
 ## Done means
 - `python scripts/sync_shared.py --check` exits 0 (copies in sync, no version in
   `marketplace.json`).
@@ -50,10 +53,12 @@
   subcommand; when you add a subcommand or change an output field, add an assertion there.
   You can only run it on your own OS: `.github/workflows/ci.yml` runs it on Linux and Windows,
   Python 3.10 and 3.13, so check CI before calling a change to `shared/*.py` done.
-- `python shared/scan_agents_md.py . --format md` reports no blocker hints for this repo.
+- `python shared/scan_agents_md.py . --format md` reports no blocker hints and no section-order
+  problems for this repo.
 - Changed a SKILL.md or anything in `skills/*/references/` (`shared/guide.md` reaches all four
   skills): before releasing, run `python evals/run_eval.py --stages <changed skills>`. Every
-  stage in its `report.md` must show OK, and read each `judgment.md`; the judge is a model too.
+  stage in the run's report.md must show OK, and read each stage's judgment.md (both written
+  under the run's output folder); the judge is a model too.
   CI cannot do this; it needs a model and costs usage. If you change a planted defect, update
   `evals/make_sample_repo.py` and `evals/expected.md` together; if you change what the skills
   ask the maintainer, check `MAINTAINER_ANSWERS` in `evals/run_eval.py`.

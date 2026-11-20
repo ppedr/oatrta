@@ -70,6 +70,7 @@ Must:
 Must not:
 - Call a missing section a finding ("no testing section"), or suggest adding an overview.
 - Raise B2 or B3 for content of CLAUDE.md, or suggest moving the Grep line into AGENTS.md.
+- Report the non-canonical headings ("Overview", "Structure", "Commits") as a finding.
 - Treat D7 as a finding because it cannot be verified.
 - Quote more than one short line per finding.
 
@@ -84,6 +85,9 @@ Must:
   full: `@AGENTS.md` plus the Grep line.
 - Add G1 and G2 as instructions; handle D8 as "removed pending confirmation" unless you answer.
 - Change only AGENTS.md files; show every removed line verbatim in the report.
+- Rebuild the root file into the guide section 13 sections, in order: "Structure", "Commits"
+  and "Security" are gone, D7 sits under "Generated and restricted files", and the report's
+  Sections table maps every original heading.
 
 Must not:
 - Invent a canonical handler for D12 without your answer.
@@ -102,6 +106,7 @@ Must:
 - Self-audit to grade A, or deliver a smaller file and say what is missing.
 - Mine CLAUDE.md (the `make build` rule is real evidence), leave it untouched and suggest the
   `@AGENTS.md` bridge as a follow-up, keeping its Grep line there.
+- Use only the guide section 13 headings, in order, in every file it writes.
 
 Must not:
 - Add an overview, a tree, a stack description, a Go version or generic advice.

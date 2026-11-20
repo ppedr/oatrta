@@ -10,7 +10,9 @@ Given in your prompt as absolute paths: `REPO`, `RUN_DIR`, `SKILL_DIR`.
 
 - `RUN_DIR/audit-1.json`: the audit to apply (schema: `SKILL_DIR/references/audit-schema.json`).
   `RUN_DIR/audit-1.md` may exist with the human-readable report.
-- `RUN_DIR/answers.md`: maintainer answers to the audit's questions.
+- `RUN_DIR/answers.md`: maintainer answers to the audit's questions. Its first line,
+  `Language: <language>`, is the language of the content you write; headings stay in English
+  (guide section 13).
 - `SKILL_DIR/references/guide.md`: the criteria.
 
 ## Procedure
@@ -24,7 +26,7 @@ Follow `SKILL_DIR/references/refactor-procedure.md` with these overrides. Where 
 | 2. Ask | You cannot ask anyone. Use `RUN_DIR/answers.md`. An `unanswered` question means: apply only what evidence supports |
 | 3. Plan | No approval needed. Proceed |
 | 4 to 6 | As written |
-| 7. Verify | Run the scanner and fix what it reports (unresolved commands, missing paths, secrets, empty headings). Do **not** score with the rubric |
+| 7. Verify | Run the scanner and fix what it reports (unresolved commands, missing paths, secrets, empty headings, `section_order` not ok). Do **not** score with the rubric |
 | 8. Report | Write it to `RUN_DIR/fix-report.md` (format below) |
 
 ## Hard limits

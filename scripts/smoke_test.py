@@ -100,7 +100,8 @@ def make_audit(repo: Path) -> dict:
                       "severity": "medium", "dimension": "G", "file": "CLAUDE.md", "line": None,
                       "summary": "copies AGENTS.md", "evidence": "CLAUDE.md:3", "fix": "replace with @AGENTS.md"}],
         "dispositions": [
-            {"file": "AGENTS.md", "start": 12, "end": 12, "verdict": "KEEP", "unverified": True},
+            # Starts at the "## Style" heading: keep-check must ignore heading lines.
+            {"file": "AGENTS.md", "start": 11, "end": 12, "verdict": "KEEP", "unverified": True},
             {"file": "AGENTS.md", "start": 13, "end": 13, "verdict": "CUT"},
         ],
         "gaps": [], "questions": ["Which actions need approval?"],
@@ -124,6 +125,10 @@ class Scanner(unittest.TestCase):
             self.assertTrue(f["generic_phrases"])
             self.assertTrue(f["overview_prose"])
             self.assertEqual([h["heading"] for h in f["empty_headings"]], ["Security"])
+            order = f["section_order"]
+            self.assertFalse(order["ok"])
+            self.assertEqual([h["heading"] for h in order["noncanonical"]], ["Overview", "Style", "Security"])
+            self.assertEqual(order["out_of_order"], [])
             self.assertIn("services/api", r["nested_candidates"])
 
     def test_lf(self) -> None:
@@ -166,6 +171,23 @@ class Scanner(unittest.TestCase):
             code, files = run(TOOLS, "hashes", str(repo))
             self.assertEqual(code, 0, files)
             self.assertIn("services/api/CLAUDE.md", [f["path"] for f in files])
+
+    def test_section_order(self) -> None:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+            repo = Path(tmp).resolve()
+            write(repo / "AGENTS.md", "# AGENTS.md\n\n## Layout\n- a\n\n## Done means\n- b\n\n### Sub\n- c\n")
+            (repo / "x").mkdir()
+            write(repo / "x" / "AGENTS.md", "# AGENTS.md (x)\n\n## Rules\n- a\n\n## Commands\n- b\n\n## Rules\n- c\n")
+            code, r = run(SCAN, str(repo))
+            self.assertEqual(code, 0, r)
+            by_path = {f["path"]: f["section_order"] for f in r["agents_md_files"]}
+            self.assertTrue(by_path["AGENTS.md"]["ok"], by_path["AGENTS.md"])
+            nested = by_path["x/AGENTS.md"]
+            self.assertFalse(nested["ok"])
+            self.assertEqual([(h["line"], h["heading"]) for h in nested["out_of_order"]],
+                             [(6, "Commands"), (9, "Rules")])
+            code, md = run(SCAN, str(repo), "--format", "md")
+            self.assertIn("out of order or repeated: Commands", md)
 
     def test_markdown_output(self) -> None:
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
